@@ -74,7 +74,7 @@ def _is_optional_type(typ: type) -> TypeGuard[type]:
 
 
 def _resolve_type_annotation(
-    typ: type,
+    typ: Any,
     description: str | None = None,
     default: Any = inspect.Parameter.empty,
     is_parameter: bool = True,
