@@ -7,6 +7,7 @@ import dataclasses
 from datetime import date, datetime, time, timedelta, timezone  # noqa: TCH003
 import decimal  # noqa: TCH003
 import enum
+import ipaddress
 from pathlib import Path  # noqa: TCH003
 import re  # noqa: TCH003
 import typing as t
@@ -717,7 +718,6 @@ def test_extended_basic_types() -> None:
     }
     assert props["b"] == {
         "type": "string",
-        "format": "byte",
         "description": "Some bytes (base64 encoded)",
     }
     assert props["p"] == {
@@ -726,13 +726,11 @@ def test_extended_basic_types() -> None:
     }
     assert props["td"] == {
         "type": "string",
-        "format": "duration",
-        "description": "A time duration (ISO 8601 duration, e.g. 'P1DT2H')",
+        "description": "A time duration (ISO 8601 duration)",
     }
     assert props["tz"] == {
         "type": "string",
-        "format": "timezone",
-        "description": "A timezone (IANA timezone, e.g. 'UTC')",
+        "description": "A timezone (IANA timezone name)",
     }
     assert props["uid"] == {
         "type": "string",
@@ -744,12 +742,46 @@ def test_extended_basic_types() -> None:
     }
     assert props["r"] == {
         "type": "object",
-        "properties": {
-            "start": {"type": "integer"},
-            "stop": {"type": "integer"},
-            "step": {"type": "integer"},
-        },
         "description": "A range",
+    }
+
+
+def test_extended_string_formats() -> None:
+    """Test string format types."""
+
+    def func(
+        ip4: ipaddress.IPv4Address,
+        ip6: ipaddress.IPv6Address,
+        uid: UUID,
+        data: bytes,
+    ) -> None:
+        """Test string formats.
+
+        Args:
+            ip4: IPv4 address
+            ip6: IPv6 address
+            uid: Unique identifier
+            data: Binary data
+        """
+
+    schema = create_schema(func)
+    props = schema.parameters["properties"]
+
+    assert props["ip4"] == {
+        "type": "string",
+        "description": "IPv4 address",
+    }
+    assert props["ip6"] == {
+        "type": "string",
+        "description": "IPv6 address",
+    }
+    assert props["uid"] == {
+        "type": "string",
+        "description": "Unique identifier",
+    }
+    assert props["data"] == {
+        "type": "string",
+        "description": "Binary data (base64 encoded)",
     }
 
 
