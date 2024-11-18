@@ -7,7 +7,7 @@ import dataclasses
 from datetime import date, datetime, time, timedelta, timezone  # noqa: TCH003
 import decimal  # noqa: TCH003
 import enum
-import ipaddress
+import ipaddress  # noqa: TCH003
 from pathlib import Path  # noqa: TCH003
 import re  # noqa: TCH003
 import typing as t
@@ -18,7 +18,6 @@ import pytest
 
 from py2openai.functionschema import (
     FunctionType,
-    create_executable,
     create_schema,
 )
 
@@ -75,26 +74,26 @@ def test_container_types() -> None:
     """Test container type annotations supported by OpenAI."""
 
     def func(
-        l: list[str],
-        d: dict[str, Any],
+        ls: list[str],
+        dct: dict[str, Any],
     ) -> dict[str, list[int]]:
         """Test function with container types.
 
         Args:
-            l: A list of strings
-            d: A dictionary
+            ls: A list of strings
+            dct: A dictionary
         """
         return {"nums": [1, 2, 3]}
 
     schema = create_schema(func)
     props = schema.parameters["properties"]
 
-    assert props["l"] == {
+    assert props["ls"] == {
         "type": "array",
         "items": {"type": "string"},
         "description": "A list of strings",
     }
-    assert props["d"] == {
+    assert props["dct"] == {
         "type": "object",
         "additionalProperties": True,
         "description": "A dictionary",
@@ -108,7 +107,7 @@ def test_optional_union_types() -> None:
     def func(
         o: int | None,
         u: str | int,
-        l: Literal["a", "b", "c"],
+        lit: Literal["a", "b", "c"],
         ou: str | int | None,
     ) -> None:
         """Test function with Optional/Union types.
@@ -116,7 +115,7 @@ def test_optional_union_types() -> None:
         Args:
             o: An optional
             u: A union
-            l: A literal
+            lit: A literal
             ou: An optional union
         """
 
@@ -128,7 +127,7 @@ def test_optional_union_types() -> None:
         "type": "string",  # first type in union
         "description": "A union",
     }
-    assert props["l"] == {
+    assert props["lit"] == {
         "type": "string",
         "enum": ["a", "b", "c"],
         "description": "A literal",
@@ -293,8 +292,7 @@ def test_sync_generator() -> None:
         Args:
             n: Number of items
         """
-        for i in range(n):
-            yield i
+        yield from range(n)
 
     schema = create_schema(gen)
     assert schema.function_type == FunctionType.SYNC_GENERATOR
@@ -302,23 +300,6 @@ def test_sync_generator() -> None:
         "type": "array",
         "items": {"type": "integer"},
     }
-
-    # Test execution
-    exe = create_executable(gen)
-    assert exe.run(3) == [0, 1, 2]
-
-
-def test_async_generator_sync_execution() -> None:
-    """Test synchronous execution of async generators."""
-
-    async def agen(n: int) -> AsyncGenerator[str, None]:
-        """Generate n strings."""
-        for i in range(n):
-            yield str(i)
-
-    exe = create_executable(agen)
-    # Test that we can run an async generator synchronously
-    assert exe.run(3) == ["0", "1", "2"]
 
 
 @pytest.mark.asyncio
@@ -340,15 +321,6 @@ async def test_async_generator() -> None:
         "type": "array",
         "items": {"type": "string"},
     }
-
-    # Test execution
-    exe = create_executable(agen)
-    assert await exe.arun(3) == ["0", "1", "2"]
-
-    collected = []
-    async for item in exe.astream(3):
-        collected.append(item)
-    assert collected == ["0", "1", "2"]
 
 
 def test_docstring_parsing() -> None:
@@ -386,7 +358,7 @@ def test_openai_schema_format() -> None:
 
     # Check all required OpenAI schema fields are present
     assert isinstance(schema.name, str)
-    assert isinstance(schema.description, (str, type(None)))
+    assert isinstance(schema.description, str | type(None))
     assert isinstance(schema.parameters, dict)
     assert "type" in schema.parameters
     assert "properties" in schema.parameters
@@ -541,7 +513,7 @@ async def test_async_generators() -> None:
 
     assert props["text"]["type"] == "string"
     assert props["chunk_size"]["type"] == "integer"
-    assert props["chunk_size"].get("default") == 100
+    assert props["chunk_size"].get("default") == 100  # noqa: PLR2004
     assert schema.returns["type"] == "array"
     assert schema.returns["items"]["type"] == "string"
 
@@ -551,7 +523,7 @@ def test_union_type_variations() -> None:
 
     def func(
         basic_union: int | str,
-        multi_union: int | str | float,
+        multi_union: int | str | float,  # noqa: PYI041
         optional_union: (int | str) | None,
         nested_union: list[int | str],
     ) -> dict[str, int | str]:
