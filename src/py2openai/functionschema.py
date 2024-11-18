@@ -5,11 +5,16 @@ from __future__ import annotations
 import asyncio
 from collections.abc import AsyncIterator, Callable  # noqa: TCH003
 import dataclasses
+from datetime import date, datetime, time, timedelta, timezone
+import decimal
 import enum
 import inspect
+from pathlib import Path
+import re
 import types
 import typing
 from typing import Annotated, Any, TypeGuard, TypeVar
+from uuid import UUID
 
 import docstring_parser
 import pydantic
@@ -264,10 +269,58 @@ def _resolve_type_annotation(
             schema["type"] = "string"
         elif typ is int:
             schema["type"] = "integer"
-        elif typ is float:
+        elif typ is float or typ is decimal.Decimal:
             schema["type"] = "number"
         elif typ is bool:
             schema["type"] = "boolean"
+        elif typ is complex:
+            schema["type"] = "object"
+            schema["properties"] = {
+                "real": {"type": "number"},
+                "imag": {"type": "number"},
+            }
+        elif typ is bytes or typ is bytearray:
+            schema["type"] = "string"
+            schema["format"] = "byte"  # indicates base64 encoded
+            if description:
+                description = f"{description} (base64 encoded)"
+        elif typ is datetime:
+            schema["type"] = "string"
+            schema["format"] = "date-time"  # This is the OpenAI expected format
+            if description:
+                description = f"{description} (ISO 8601 format)"
+        elif typ is date:
+            schema["type"] = "string"
+            schema["format"] = "date"
+            if description:
+                description = f"{description} (ISO 8601 format)"
+        elif typ is time:
+            schema["type"] = "string"
+            schema["format"] = "time"
+            if description:
+                description = f"{description} (ISO 8601 format)"
+        elif typ is timedelta:
+            schema["type"] = "string"
+            schema["format"] = "duration"
+            if description:
+                description = f"{description} (ISO 8601 duration, e.g. 'P1DT2H')"
+        elif typ is timezone:
+            schema["type"] = "string"
+            schema["format"] = "timezone"
+            if description:
+                description = f"{description} (IANA timezone, e.g. 'UTC')"
+        elif typ in (Path, UUID):
+            schema["type"] = "string"
+        elif typ is re.Pattern:
+            schema["type"] = "string"
+            schema["format"] = "regex"
+        elif typ is range:
+            schema["type"] = "object"
+            schema["properties"] = {
+                "start": {"type": "integer"},
+                "stop": {"type": "integer"},
+                "step": {"type": "integer"},
+            }
         else:
             schema["type"] = "object"
     else:

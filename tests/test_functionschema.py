@@ -4,9 +4,14 @@ from __future__ import annotations
 
 from collections.abc import AsyncGenerator, Generator  # noqa: TCH003
 import dataclasses
+from datetime import date, datetime, time, timedelta, timezone  # noqa: TCH003
+import decimal  # noqa: TCH003
 import enum
+from pathlib import Path  # noqa: TCH003
+import re  # noqa: TCH003
 import typing as t
 from typing import Annotated, Any, Literal
+from uuid import UUID  # noqa: TCH003
 
 import pytest
 
@@ -620,6 +625,132 @@ def test_type_aliases() -> None:
     assert props["data"]["type"] == "object"
     assert props["values"]["type"] == "array"
     assert schema.returns["type"] == "object"
+
+
+def test_datetime_types() -> None:
+    """Test datetime type handling."""
+
+    def func(
+        dt: datetime,
+        d: date,
+        t: time,
+        optional_dt: datetime | None = None,
+    ) -> dict[str, datetime]:
+        """Test datetime types.
+
+        Args:
+            dt: A datetime
+            d: A date
+            t: A time
+            optional_dt: Optional datetime
+        """
+        return {"result": dt}
+
+    schema = create_schema(func)
+    props = schema.parameters["properties"]
+
+    assert props["dt"] == {
+        "type": "string",
+        "format": "date-time",
+        "description": "A datetime (ISO 8601 format)",
+    }
+    assert props["d"] == {
+        "type": "string",
+        "format": "date",
+        "description": "A date (ISO 8601 format)",
+    }
+    assert props["t"] == {
+        "type": "string",
+        "format": "time",
+        "description": "A time (ISO 8601 format)",
+    }
+    assert props["optional_dt"]["type"] == "string"
+    assert props["optional_dt"]["format"] == "date-time"
+
+    assert schema.returns == {
+        "type": "object",
+    }
+
+
+def test_extended_basic_types() -> None:
+    """Test extended basic type annotations."""
+
+    def func(
+        dec: decimal.Decimal,
+        comp: complex,
+        b: bytes,
+        p: Path,
+        td: timedelta,
+        tz: timezone,
+        uid: UUID,
+        pat: re.Pattern[str],
+        r: range,
+    ) -> None:
+        """Test extended basic types.
+
+        Args:
+            dec: A decimal number
+            comp: A complex number
+            b: Some bytes
+            p: A path
+            td: A time duration
+            tz: A timezone
+            uid: A UUID
+            pat: A regex pattern
+            r: A range
+        """
+
+    schema = create_schema(func)
+    props = schema.parameters["properties"]
+
+    assert props["dec"] == {
+        "type": "number",
+        "description": "A decimal number",
+    }
+    assert props["comp"] == {
+        "type": "object",
+        "properties": {
+            "real": {"type": "number"},
+            "imag": {"type": "number"},
+        },
+        "description": "A complex number",
+    }
+    assert props["b"] == {
+        "type": "string",
+        "format": "byte",
+        "description": "Some bytes (base64 encoded)",
+    }
+    assert props["p"] == {
+        "type": "string",
+        "description": "A path",
+    }
+    assert props["td"] == {
+        "type": "string",
+        "format": "duration",
+        "description": "A time duration (ISO 8601 duration, e.g. 'P1DT2H')",
+    }
+    assert props["tz"] == {
+        "type": "string",
+        "format": "timezone",
+        "description": "A timezone (IANA timezone, e.g. 'UTC')",
+    }
+    assert props["uid"] == {
+        "type": "string",
+        "description": "A UUID",
+    }
+    assert props["pat"] == {
+        "type": "string",
+        "description": "A regex pattern",
+    }
+    assert props["r"] == {
+        "type": "object",
+        "properties": {
+            "start": {"type": "integer"},
+            "stop": {"type": "integer"},
+            "step": {"type": "integer"},
+        },
+        "description": "A range",
+    }
 
 
 if __name__ == "__main__":
