@@ -3,11 +3,15 @@ from __future__ import annotations
 import importlib
 import inspect
 import types
+from typing import Literal
 
 from py2openai.functionschema import FunctionSchema, create_schema
 
 
-def create_schemas_from_class(cls: type) -> dict[str, FunctionSchema]:
+def create_schemas_from_class(
+    cls: type,
+    prefix: str | Literal[False] | None = None,
+) -> dict[str, FunctionSchema]:
     """Generate OpenAI function schemas for all public methods in a class.
 
     This function analyzes a class and creates OpenAI function schemas for all of its
@@ -16,6 +20,8 @@ def create_schemas_from_class(cls: type) -> dict[str, FunctionSchema]:
 
     Args:
         cls: The class to generate schemas from. Must be a type object.
+        prefix: Schema name prefix. If None, uses class name.
+               If False, no prefix. If string, uses that prefix.
 
     Returns:
         A dictionary mapping qualified method names (e.g. 'ClassName.method_name')
@@ -39,18 +45,21 @@ def create_schemas_from_class(cls: type) -> dict[str, FunctionSchema]:
         # Handle different method types
         if inspect.isfunction(attr) or inspect.ismethod(attr):
             # Regular methods
-            schemas[f"{cls.__name__}.{name}"] = create_schema(attr)
+            key = name if prefix is False else f"{prefix or cls.__name__}.{name}"
+            schemas[key] = create_schema(attr)
         elif isinstance(attr, classmethod | staticmethod):
             # Class methods and static methods
-            # Get the underlying function
             func = attr.__get__(None, cls)
-            schemas[f"{cls.__name__}.{name}"] = create_schema(func)
+            key = name if prefix is False else f"{prefix or cls.__name__}.{name}"
+            schemas[key] = create_schema(func)
 
     return schemas
 
 
 def create_schemas_from_module(
-    module: types.ModuleType | str, include_functions: list[str] | None = None
+    module: types.ModuleType | str,
+    include_functions: list[str] | None = None,
+    prefix: str | Literal[False] | None = None,
 ) -> dict[str, FunctionSchema]:
     """Generate OpenAI function schemas from a Python module's functions.
 
@@ -62,6 +71,8 @@ def create_schemas_from_module(
         module: Either a ModuleType object or string name of module to analyze
         include_functions: Optional list of function names to specifically include.
             If None, all public functions are included.
+        prefix: Schema name prefix. If None, uses module name.
+                If False, no prefix. If string, uses that prefix.
 
     Returns:
         A dictionary mapping function names to their corresponding FunctionSchema
@@ -83,10 +94,16 @@ def create_schemas_from_module(
     )
     schemas = {}
     for name, func in inspect.getmembers(mod, predicate=inspect.isfunction):
-        if (
-            include_functions is None or name in include_functions
-        ) and not name.startswith("_"):
-            schemas[name] = create_schema(func)
+        # Skip private functions and check inclusion list
+        if name.startswith("_") or (
+            include_functions is not None and name not in include_functions
+        ):
+            continue
+
+        # Generate key based on prefix setting
+        key = name if prefix is False else f"{prefix or mod.__name__}.{name}"
+        schemas[key] = create_schema(func)
+
     return schemas
 
 

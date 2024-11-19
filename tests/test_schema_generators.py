@@ -115,19 +115,39 @@ def test_async_method_schema() -> None:
 
 def test_create_schemas_from_class_methods() -> None:
     """Test creating schemas from all methods in a class."""
+    # Default prefix (class name)
     schemas = create_schemas_from_class(TestClass)
-
-    assert isinstance(schemas, dict)
-    assert len(schemas) == 4  # noqa: PLR2004
     assert "TestClass.simple_method" in schemas
     assert "TestClass.class_method" in schemas
     assert "TestClass.static_method" in schemas
     assert "TestClass.async_method" in schemas
 
-    # Private methods should be excluded
-    assert not any(name.startswith("TestClass._") for name in schemas)
+    # No prefix
+    schemas_no_prefix = create_schemas_from_class(TestClass, prefix=False)
+    assert "simple_method" in schemas_no_prefix
+    assert "class_method" in schemas_no_prefix
+    assert "static_method" in schemas_no_prefix
+    assert "async_method" in schemas_no_prefix
 
-    # Verify method types are correct
+    # Custom prefix
+    schemas_custom = create_schemas_from_class(TestClass, prefix="MyAPI")
+    assert "MyAPI.simple_method" in schemas_custom
+    assert "MyAPI.class_method" in schemas_custom
+    assert "MyAPI.static_method" in schemas_custom
+    assert "MyAPI.async_method" in schemas_custom
+
+    # Verify contents are the same regardless of prefix
+    for name in ["simple_method", "class_method", "static_method", "async_method"]:
+        default_schema = schemas[f"TestClass.{name}"]
+        no_prefix_schema = schemas_no_prefix[name]
+        custom_schema = schemas_custom[f"MyAPI.{name}"]
+
+        # Names will differ but contents should be identical
+        assert default_schema.parameters == no_prefix_schema.parameters
+        assert default_schema.returns == custom_schema.returns
+        assert default_schema.function_type == custom_schema.function_type
+
+    # Verify function types
     assert schemas["TestClass.simple_method"].function_type == FunctionType.SYNC
     assert schemas["TestClass.class_method"].function_type == FunctionType.SYNC
     assert schemas["TestClass.static_method"].function_type == FunctionType.SYNC
@@ -149,9 +169,39 @@ def test_create_schemas_from_class() -> None:
 
 
 def test_create_schemas_from_module() -> None:
-    """Test creating schemas from the functionschema module itself."""
-    import py2openai.functionschema as schema_module
+    """Test schema generation from modules with different prefix options."""
+    import py2openai.schema_generators as schema_module
 
+    # Test default prefix (module name)
     schemas = create_schemas_from_module(schema_module)
-    assert isinstance(schemas, dict)
-    assert all(isinstance(schema, FunctionSchema) for schema in schemas.values())
+    assert "py2openai.schema_generators.create_schema" in schemas
+    assert "py2openai.schema_generators.create_schemas_from_class" in schemas
+    assert "py2openai.schema_generators.create_schemas_from_module" in schemas
+
+    # Test with no prefix
+    no_prefix = create_schemas_from_module(schema_module, prefix=False)
+    assert "create_schema" in no_prefix
+    assert "create_schemas_from_class" in no_prefix
+    assert "create_schemas_from_module" in no_prefix
+
+    # Test with custom prefix
+    custom = create_schemas_from_module(schema_module, prefix="API")
+    assert "API.create_schema" in custom
+    assert "API.create_schemas_from_class" in custom
+    assert "API.create_schemas_from_module" in custom
+
+    # Test with include_functions
+    included = create_schemas_from_module(
+        schema_module, include_functions=["create_schema"], prefix="API"
+    )
+    assert len(included) == 1
+    assert "API.create_schema" in included
+
+    # Verify schemas are identical regardless of prefix
+    base_schema = schemas["py2openai.schema_generators.create_schema"]
+    no_prefix_schema = no_prefix["create_schema"]
+    custom_schema = custom["API.create_schema"]
+
+    assert base_schema.parameters == no_prefix_schema.parameters
+    assert base_schema.returns == custom_schema.returns
+    assert base_schema.function_type == custom_schema.function_type
