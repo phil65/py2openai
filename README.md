@@ -182,3 +182,90 @@ def func(
     }
 }
 ```
+
+## Schema Generators
+
+### Module Schemas
+
+You can generate schemas for all public functions in a module using `create_schemas_from_module`:
+
+```python
+from py2openai import create_schemas_from_module
+import math
+
+# Generate schemas for all public functions
+schemas = create_schemas_from_module(math)
+
+# Generate schemas for specific functions only
+schemas = create_schemas_from_module(math, include_functions=['sin', 'cos'])
+
+# Import module by string name
+schemas = create_schemas_from_module('math')
+```
+
+### Class Schemas
+
+Generate schemas for all public methods in a class using `create_schemas_from_class`:
+
+```python
+from py2openai import create_schemas_from_class
+
+class Calculator:
+    def add(self, x: int, y: int) -> int:
+        """Add two numbers.
+
+        Args:
+            x: First number
+            y: Second number
+
+        Returns:
+            Sum of x and y
+        """
+        return x + y
+
+    @classmethod
+    def multiply(cls, x: int, y: int) -> int:
+        """Multiply two numbers.
+
+        Args:
+            x: First number
+            y: Second number
+
+        Returns:
+            Product of x and y
+        """
+        return x * y
+
+    @staticmethod
+    def divide(x: float, y: float) -> float:
+        """Divide two numbers.
+
+        Args:
+            x: Numerator
+            y: Denominator
+
+        Returns:
+            Result of x divided by y
+        """
+        return x / y
+
+# Generate schemas for all public methods
+schemas = create_schemas_from_class(Calculator)
+
+# Access individual method schemas
+add_schema = schemas['Calculator.add']
+multiply_schema = schemas['Calculator.multiply']
+divide_schema = schemas['Calculator.divide']
+```
+
+The schema generators support:
+
+- Regular instance methods
+- Class methods
+- Static methods
+- Async methods
+- Property methods
+- All supported type annotations
+- Method docstrings for descriptions
+- Default values
+- Return type hints
