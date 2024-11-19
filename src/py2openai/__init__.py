@@ -1,4 +1,4 @@
-__version__ = "0.0.1"
+__version__ = "0.9.0"
 
 from py2openai.executable import create_executable, ExecutableFunction
 from py2openai.functionschema import FunctionType, create_schema
