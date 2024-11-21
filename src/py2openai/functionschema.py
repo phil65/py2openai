@@ -30,23 +30,94 @@ class FunctionType(str, enum.Enum):
 
 
 class FunctionSchema(pydantic.BaseModel):
-    """Schema representing an OpenAI function."""
+    """Schema representing an OpenAI function definition and metadata.
+
+    This class encapsulates all the necessary information to describe a function to the
+    OpenAI API, including its name, description, parameters, return type, and execution
+    characteristics. It follows the OpenAI function calling format while adding
+    additional metadata useful for Python function handling.
+
+    The schema includes support for complex parameter types, optional values,
+    and different function execution patterns (sync, async, generators).
+    """
 
     name: str
+    """The name of the function as it will be presented to the OpenAI API."""
+
     description: str | None = None
+    """
+    Optional description of what the function does. This helps the AI understand
+    when and how to use the function.
+    """
+
     parameters: dict[str, Any] = pydantic.Field(
         default_factory=lambda: {"type": "object", "properties": {}},
     )
+    """
+    JSON Schema object describing the function's parameters. Contains type information,
+    descriptions, and constraints for each parameter.
+    """
+
     required: list[str] = pydantic.Field(default_factory=list)
+    """
+    List of parameter names that are required (do not have default values).
+    These parameters must be provided when calling the function.
+    """
+
     returns: dict[str, Any] = pydantic.Field(
         default_factory=lambda: {"type": "object"},
     )
+    """
+    JSON Schema object describing the function's return type. Used for type checking
+    and documentation purposes.
+    """
+
     function_type: FunctionType = FunctionType.SYNC
+    """
+    The execution pattern of the function (sync, async, generator, or async generator).
+    Used to determine how to properly invoke the function.
+    """
 
     model_config = pydantic.ConfigDict(frozen=True)
 
     def model_dump_openai(self) -> dict[str, Any]:
-        """Convert to OpenAI-compatible function schema."""
+        """Convert the schema to OpenAI's function calling format.
+
+        Returns:
+            A dictionary matching OpenAI's function definition format, containing
+            the function name, description, and parameters schema.
+
+        Example:
+            ```python
+            schema = FunctionSchema(
+                name="get_weather",
+                description="Get weather information for a location",
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "location": {"type": "string"},
+                        "unit": {"type": "string", "enum": ["C", "F"]}
+                    }
+                },
+                required=["location"]
+            )
+
+            openai_schema = schema.model_dump_openai()
+            # Result:
+            # {
+            #     "name": "get_weather",
+            #     "description": "Get weather information for a location",
+            #     "parameters": {
+            #         "type": "object",
+            #         "properties": {
+            #             "location": {"type": "string"},
+            #             "unit": {"type": "string", "enum": ["C", "F"]}
+            #         },
+            #         "required": ["location"]
+            #     }
+            # }
+            ```
+        """
         return {
             "name": self.name,
             "description": self.description,
