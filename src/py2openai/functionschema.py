@@ -34,12 +34,16 @@ class FunctionSchema(pydantic.BaseModel):
 
     name: str
     description: str | None = None
-    parameters: dict[str, Any]
-    required: list[str]
-    returns: dict[str, Any]
+    parameters: dict[str, Any] = pydantic.Field(
+        default_factory=lambda: {"type": "object", "properties": {}},
+    )
+    required: list[str] = pydantic.Field(default_factory=list)
+    returns: dict[str, Any] = pydantic.Field(
+        default_factory=lambda: {"type": "object"},
+    )
+    function_type: FunctionType = FunctionType.SYNC
 
-    # Internal metadata - not part of OpenAI schema
-    function_type: FunctionType
+    model_config = pydantic.ConfigDict(frozen=True)
 
     def model_dump_openai(self) -> dict[str, Any]:
         """Convert to OpenAI-compatible function schema."""
@@ -261,6 +265,10 @@ def create_schema(func: Callable[..., Any]) -> FunctionSchema:
 
     Raises:
         TypeError: If input is not callable
+
+    Note:
+        Variable arguments (*args) and keyword arguments (**kwargs) are not
+        supported in OpenAI function schemas and will be ignored with a warning.
     """
     if not callable(func):
         msg = f"Expected callable, got {type(func)}"
