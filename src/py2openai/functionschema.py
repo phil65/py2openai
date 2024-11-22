@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable  # noqa: TCH003
+from collections.abc import Callable  # noqa: TC003
 import dataclasses
 from datetime import date, datetime, time, timedelta, timezone
 import decimal

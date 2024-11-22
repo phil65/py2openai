@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import AsyncGenerator, Generator  # noqa: TCH003
+from collections.abc import AsyncGenerator, Generator  # noqa: TC003
 
 import pytest
 

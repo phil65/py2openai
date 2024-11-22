@@ -2,17 +2,17 @@
 
 from __future__ import annotations
 
-from collections.abc import AsyncGenerator, Generator  # noqa: TCH003
+from collections.abc import AsyncGenerator, Generator  # noqa: TC003
 import dataclasses
-from datetime import date, datetime, time, timedelta, timezone  # noqa: TCH003
-import decimal  # noqa: TCH003
+from datetime import date, datetime, time, timedelta, timezone  # noqa: TC003
+import decimal  # noqa: TC003
 import enum
-import ipaddress  # noqa: TCH003
-from pathlib import Path  # noqa: TCH003
-import re  # noqa: TCH003
+import ipaddress  # noqa: TC003
+from pathlib import Path  # noqa: TC003
+import re  # noqa: TC003
 import typing as t
 from typing import Annotated, Any, Literal
-from uuid import UUID  # noqa: TCH003
+from uuid import UUID  # noqa: TC003
 
 import pytest
 

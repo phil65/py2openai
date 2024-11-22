@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import AsyncIterator, Callable  # noqa: TCH003
+from collections.abc import AsyncIterator, Callable  # noqa: TC003
 from typing import TYPE_CHECKING, Any, TypeVar, overload
 
 from py2openai.functionschema import FunctionSchema, FunctionType, create_schema
