@@ -6,6 +6,7 @@ from py2openai.schema_generators import (
     create_schemas_from_module,
     create_schemas_from_class,
 )
+from py2openai.typedefs import ToolSchema
 
 __all__ = [
     "create_executable",
@@ -14,4 +15,5 @@ __all__ = [
     "create_schema",
     "create_schemas_from_module",
     "create_schemas_from_class",
+    "ToolSchema",
 ]
