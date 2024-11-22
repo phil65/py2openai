@@ -6,12 +6,13 @@ from py2openai.schema_generators import (
     create_schemas_from_module,
     create_schemas_from_class,
 )
-from py2openai.typedefs import ToolSchema
+from py2openai.typedefs import OpenAIFunctionDefinition, OpenAIFunctionTool
 
 __all__ = [
     "ExecutableFunction",
     "FunctionType",
-    "ToolSchema",
+    "OpenAIFunctionDefinition",
+    "OpenAIFunctionTool",
     "create_executable",
     "create_schema",
     "create_schemas_from_class",

@@ -1,5 +1,7 @@
 # Py2OpenAI
 
+A Python library that automatically converts Python functions to OpenAI function calling schemas.
+
 [![PyPI License](https://img.shields.io/pypi/l/py2openai.svg)](https://pypi.org/project/py2openai/)
 [![Package status](https://img.shields.io/pypi/status/py2openai.svg)](https://pypi.org/project/py2openai/)
 [![Daily downloads](https://img.shields.io/pypi/dd/py2openai.svg)](https://pypi.org/project/py2openai/)
@@ -37,13 +39,13 @@ Convert Python functions to OpenAI-compatible function schemas automatically.
 ## Installation
 
 ```bash
-pip install openai-function-schema  # not yet published
+pip install py2openai
 ```
 
 ## Basic Usage
 
 ```python
-from openai_function_schema import create_schema
+from py2openai import create_schema
 from typing import Literal
 
 def get_weather(
@@ -63,6 +65,12 @@ def get_weather(
 # Create schema
 schema = create_schema(get_weather)
 
+# The schema.model_dump_openai() returns a TypedDict with the complete OpenAI tool definition:
+# OpenAIFunctionTool = TypedDict({
+#     "type": Literal["function"],
+#     "function": OpenAIFunctionDefinition
+# })
+
 # Use with OpenAI
 from openai import OpenAI
 
@@ -70,9 +78,14 @@ client = OpenAI()
 response = client.chat.completions.create(
     model="gpt-4",
     messages=[{"role": "user", "content": "What's the weather in London?"}],
-    functions=[schema.model_dump_openai()],
-    function_call="auto"
+    tools=[schema.model_dump_openai()],  # Schema includes the type: "function" wrapper
+    tool_choice="auto"
 )
+```
+
+> **Note**: This library supports the OpenAI API v1 format (openai>=1.0.0). For older
+> versions of the OpenAI package that use the legacy functions API, you'll need to
+> unwrap the function definition using `schema.model_dump_openai()["function"]`.
 ```
 
 ## Supported Types
@@ -157,28 +170,31 @@ def func(
 
 ```python
 {
-    "name": "get_weather",
-    "description": "Get the weather for a location.",
-    "parameters": {
-        "type": "object",
-        "properties": {
-            "location": {
-                "type": "string",
-                "description": "City or address to get weather for"
+    "type": "function",
+    "function": {
+        "name": "get_weather",
+        "description": "Get the weather for a location.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "location": {
+                    "type": "string",
+                    "description": "City or address to get weather for"
+                },
+                "unit": {
+                    "type": "string",
+                    "enum": ["C", "F"],
+                    "description": "Temperature unit (Celsius or Fahrenheit)",
+                    "default": "C"
+                },
+                "detailed": {
+                    "type": "boolean",
+                    "description": "Include extended forecast",
+                    "default": false
+                }
             },
-            "unit": {
-                "type": "string",
-                "enum": ["C", "F"],
-                "description": "Temperature unit (Celsius or Fahrenheit)",
-                "default": "C"
-            },
-            "detailed": {
-                "type": "boolean",
-                "description": "Include extended forecast",
-                "default": false
-            }
-        },
-        "required": ["location"]
+            "required": ["location"]
+        }
     }
 }
 ```

@@ -19,7 +19,12 @@ from uuid import UUID
 import docstring_parser
 import pydantic
 
-from py2openai.typedefs import Property, ToolParameters, ToolSchema
+from py2openai.typedefs import (
+    OpenAIFunctionDefinition,
+    OpenAIFunctionTool,
+    Property,
+    ToolParameters,
+)
 
 
 class FunctionType(str, enum.Enum):
@@ -82,12 +87,11 @@ class FunctionSchema(pydantic.BaseModel):
 
     model_config = pydantic.ConfigDict(frozen=True)
 
-    def model_dump_openai(self) -> ToolSchema:
+    def model_dump_openai(self) -> OpenAIFunctionTool:
         """Convert the schema to OpenAI's function calling format.
 
         Returns:
-            A dictionary matching OpenAI's function definition format, containing
-            the function name, description, and parameters schema.
+            A dictionary matching OpenAI's complete function tool definition format.
 
         Example:
             ```python
@@ -107,15 +111,18 @@ class FunctionSchema(pydantic.BaseModel):
             openai_schema = schema.model_dump_openai()
             # Result:
             # {
-            #     "name": "get_weather",
-            #     "description": "Get weather information for a location",
-            #     "parameters": {
-            #         "type": "object",
-            #         "properties": {
-            #             "location": {"type": "string"},
-            #             "unit": {"type": "string", "enum": ["C", "F"]}
-            #         },
-            #         "required": ["location"]
+            #     "type": "function",
+            #     "function": {
+            #         "name": "get_weather",
+            #         "description": "Get weather information for a location",
+            #         "parameters": {
+            #             "type": "object",
+            #             "properties": {
+            #                 "location": {"type": "string"},
+            #                 "unit": {"type": "string", "enum": ["C", "F"]}
+            #             },
+            #             "required": ["location"]
+            #         }
             #     }
             # }
             ```
@@ -125,11 +132,19 @@ class FunctionSchema(pydantic.BaseModel):
             "properties": self.parameters["properties"],
             "required": self.required,
         }
-        return ToolSchema({
-            "name": self.name,
-            "description": self.description or "",
-            "parameters": parameters,
-        })
+
+        # First create the function definition
+        function_def = OpenAIFunctionDefinition(
+            name=self.name,
+            description=self.description or "",
+            parameters=parameters,
+        )
+
+        # Then wrap it in the tool
+        return OpenAIFunctionTool(
+            type="function",
+            function=function_def,
+        )
 
 
 def _is_optional_type(typ: type) -> TypeGuard[type]:

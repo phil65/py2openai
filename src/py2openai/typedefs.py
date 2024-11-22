@@ -49,12 +49,27 @@ class ToolParameters(TypedDict):
     required: NotRequired[list[str]]
 
 
-class ToolSchema(TypedDict):
-    """Complete schema for an OpenAI function call."""
+class OpenAIFunctionDefinition(TypedDict):
+    """Schema for the function definition part of an OpenAI tool.
+
+    This represents the inner "function" object that contains the actual
+    function metadata and parameters.
+    """
 
     name: str
     description: str
     parameters: ToolParameters
+
+
+class OpenAIFunctionTool(TypedDict):
+    """Complete OpenAI tool definition for function calling.
+
+    This represents the top-level tool object that wraps a function definition
+    and identifies it as a function tool type.
+    """
+
+    type: Literal["function"]
+    function: OpenAIFunctionDefinition
 
 
 def _create_simple_property(
