@@ -386,8 +386,17 @@ def create_schema(func: Callable[..., Any]) -> FunctionSchema:
     # Process parameters
     parameters: ToolParameters = {"type": "object", "properties": {}}
     required: list[str] = []
-
-    for name, param in sig.parameters.items():
+    params = list(sig.parameters.items())
+    skip_first = (
+        inspect.isfunction(func)
+        and not inspect.ismethod(func)
+        and params
+        and params[0][0] == "self"
+    )
+    for i, (name, param) in enumerate(sig.parameters.items()):
+        # Skip the first parameter for bound methods
+        if skip_first and i == 0:
+            continue
         if param.kind in (
             inspect.Parameter.VAR_POSITIONAL,
             inspect.Parameter.VAR_KEYWORD,
