@@ -19,6 +19,8 @@ from uuid import UUID
 import docstring_parser
 import pydantic
 
+from py2openai.typedefs import Property, ToolParameters, ToolSchema
+
 
 class FunctionType(str, enum.Enum):
     """Enum representing different function types."""
@@ -50,8 +52,8 @@ class FunctionSchema(pydantic.BaseModel):
     when and how to use the function.
     """
 
-    parameters: dict[str, Any] = pydantic.Field(
-        default_factory=lambda: {"type": "object", "properties": {}},
+    parameters: ToolParameters = pydantic.Field(
+        default_factory=lambda: ToolParameters(type="object", properties={}),
     )
     """
     JSON Schema object describing the function's parameters. Contains type information,
@@ -80,7 +82,7 @@ class FunctionSchema(pydantic.BaseModel):
 
     model_config = pydantic.ConfigDict(frozen=True)
 
-    def model_dump_openai(self) -> dict[str, Any]:
+    def model_dump_openai(self) -> ToolSchema:
         """Convert the schema to OpenAI's function calling format.
 
         Returns:
@@ -118,14 +120,16 @@ class FunctionSchema(pydantic.BaseModel):
             # }
             ```
         """
-        return {
-            "name": self.name,
-            "description": self.description,
-            "parameters": {
-                **self.parameters,
-                "required": self.required,
-            },
+        parameters: ToolParameters = {
+            "type": "object",
+            "properties": self.parameters["properties"],
+            "required": self.required,
         }
+        return ToolSchema({
+            "name": self.name,
+            "description": self.description or "",
+            "parameters": parameters,
+        })
 
 
 def _is_optional_type(typ: type) -> TypeGuard[type]:
@@ -140,7 +144,7 @@ def _is_optional_type(typ: type) -> TypeGuard[type]:
     origin = typing.get_origin(typ)
 
     # Not a Union/UnionType, can't be Optional
-    if origin not in (typing.Union, types.UnionType):
+    if origin not in (typing.Union, types.UnionType):  # pyright: ignore
         return False
 
     args = typing.get_args(typ)
@@ -153,7 +157,7 @@ def _resolve_type_annotation(
     description: str | None = None,
     default: Any = inspect.Parameter.empty,
     is_parameter: bool = True,
-) -> dict[str, Any]:
+) -> Property:
     """Resolve a type annotation into an OpenAI schema type.
 
     Args:
@@ -179,7 +183,7 @@ def _resolve_type_annotation(
     args = typing.get_args(typ)
 
     # Handle Union types (including Optional)
-    if origin in (typing.Union, types.UnionType):
+    if origin in (typing.Union, types.UnionType):  # pyright: ignore
         # For Optional (union with None), filter out None type
         non_none_types = [t for t in args if t is not type(None)]
         if non_none_types:
@@ -214,8 +218,8 @@ def _resolve_type_annotation(
         set,
         tuple,
         frozenset,
-        typing.List,  # noqa: UP006
-        typing.Set,  # noqa: UP006
+        typing.List,  # noqa: UP006  # pyright: ignore
+        typing.Set,  # noqa: UP006  # pyright: ignore
     ) or (
         origin is not None
         and origin.__module__ == "collections.abc"
@@ -304,7 +308,34 @@ def _resolve_type_annotation(
     if default is not inspect.Parameter.empty:
         schema["default"] = default
 
-    return schema
+    from py2openai.typedefs import (
+        _create_array_property,
+        _create_object_property,
+        _create_simple_property,
+    )
+
+    if schema["type"] == "array":
+        return _create_array_property(
+            items=schema["items"],
+            description=schema.get("description"),
+        )
+    if schema["type"] == "object":
+        prop = _create_object_property(description=schema.get("description"))
+        if "properties" in schema:
+            prop["properties"] = schema["properties"]
+        if "additionalProperties" in schema:
+            prop["additionalProperties"] = schema["additionalProperties"]
+        if "required" in schema:
+            prop["required"] = schema["required"]
+        return prop
+
+    return _create_simple_property(
+        type_str=schema["type"],
+        description=schema.get("description"),
+        enum_values=schema.get("enum"),
+        default=default if default is not inspect.Parameter.empty else None,
+        fmt=schema.get("format"),
+    )
 
 
 def _determine_function_type(func: Callable[..., Any]) -> FunctionType:
@@ -353,7 +384,7 @@ def create_schema(func: Callable[..., Any]) -> FunctionSchema:
     hints = typing.get_type_hints(func)
 
     # Process parameters
-    parameters: dict[str, Any] = {"type": "object", "properties": {}}
+    parameters: ToolParameters = {"type": "object", "properties": {}}
     required: list[str] = []
 
     for name, param in sig.parameters.items():
@@ -388,19 +419,19 @@ def create_schema(func: Callable[..., Any]) -> FunctionSchema:
             (t for t in typing.get_args(return_hint) if t is not type(None)),
             Any,
         )
-        returns = {
+        returns_dct = {
             "type": "array",
             "items": _resolve_type_annotation(element_type, is_parameter=False),
         }
     else:
         returns = _resolve_type_annotation(return_hint, is_parameter=False)
-
+        returns_dct = dict(returns)  # type: ignore
     return FunctionSchema(
         name=func.__name__,
         description=docstring.short_description,
         parameters=parameters,
         required=required,
-        returns=returns,
+        returns=returns_dct,
         function_type=function_type,
     )
 
