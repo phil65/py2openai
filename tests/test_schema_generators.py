@@ -14,7 +14,7 @@ from py2openai.schema_generators import (
 )
 
 
-class TestClass:
+class _TestClass:
     """Test class with various method types."""
 
     def __init__(self, value: int) -> None:
@@ -69,7 +69,7 @@ class TestClass:
 
 def test_bound_method_schema() -> None:
     """Test schema generation for bound instance methods."""
-    instance = TestClass(42)
+    instance = _TestClass(42)
     schema = create_schema(instance.simple_method)
 
     assert isinstance(schema, FunctionSchema)
@@ -81,7 +81,7 @@ def test_bound_method_schema() -> None:
 
 def test_class_method_schema() -> None:
     """Test schema generation for class methods."""
-    schema = create_schema(TestClass.class_method)
+    schema = create_schema(_TestClass.class_method)
 
     assert isinstance(schema, FunctionSchema)
     assert schema.name == "class_method"
@@ -92,7 +92,7 @@ def test_class_method_schema() -> None:
 
 def test_static_method_schema() -> None:
     """Test schema generation for static methods."""
-    schema = create_schema(TestClass.static_method)
+    schema = create_schema(_TestClass.static_method)
 
     assert isinstance(schema, FunctionSchema)
     assert schema.name == "static_method"
@@ -103,7 +103,7 @@ def test_static_method_schema() -> None:
 
 def test_async_method_schema() -> None:
     """Test schema generation for async methods."""
-    instance = TestClass(42)
+    instance = _TestClass(42)
     schema = create_schema(instance.async_method)
 
     assert isinstance(schema, FunctionSchema)
@@ -116,21 +116,21 @@ def test_async_method_schema() -> None:
 def test_create_schemas_from_class_methods() -> None:
     """Test creating schemas from all methods in a class."""
     # Default prefix (class name)
-    schemas = create_schemas_from_class(TestClass)
-    assert "TestClass.simple_method" in schemas
-    assert "TestClass.class_method" in schemas
-    assert "TestClass.static_method" in schemas
-    assert "TestClass.async_method" in schemas
+    schemas = create_schemas_from_class(_TestClass)
+    assert "_TestClass.simple_method" in schemas
+    assert "_TestClass.class_method" in schemas
+    assert "_TestClass.static_method" in schemas
+    assert "_TestClass.async_method" in schemas
 
     # No prefix
-    schemas_no_prefix = create_schemas_from_class(TestClass, prefix=False)
+    schemas_no_prefix = create_schemas_from_class(_TestClass, prefix=False)
     assert "simple_method" in schemas_no_prefix
     assert "class_method" in schemas_no_prefix
     assert "static_method" in schemas_no_prefix
     assert "async_method" in schemas_no_prefix
 
     # Custom prefix
-    schemas_custom = create_schemas_from_class(TestClass, prefix="MyAPI")
+    schemas_custom = create_schemas_from_class(_TestClass, prefix="MyAPI")
     assert "MyAPI.simple_method" in schemas_custom
     assert "MyAPI.class_method" in schemas_custom
     assert "MyAPI.static_method" in schemas_custom
@@ -138,7 +138,7 @@ def test_create_schemas_from_class_methods() -> None:
 
     # Verify contents are the same regardless of prefix
     for name in ["simple_method", "class_method", "static_method", "async_method"]:
-        default_schema = schemas[f"TestClass.{name}"]
+        default_schema = schemas[f"_TestClass.{name}"]
         no_prefix_schema = schemas_no_prefix[name]
         custom_schema = schemas_custom[f"MyAPI.{name}"]
 
@@ -148,10 +148,10 @@ def test_create_schemas_from_class_methods() -> None:
         assert default_schema.function_type == custom_schema.function_type
 
     # Verify function types
-    assert schemas["TestClass.simple_method"].function_type == FunctionType.SYNC
-    assert schemas["TestClass.class_method"].function_type == FunctionType.SYNC
-    assert schemas["TestClass.static_method"].function_type == FunctionType.SYNC
-    assert schemas["TestClass.async_method"].function_type == FunctionType.ASYNC
+    assert schemas["_TestClass.simple_method"].function_type == FunctionType.SYNC
+    assert schemas["_TestClass.class_method"].function_type == FunctionType.SYNC
+    assert schemas["_TestClass.static_method"].function_type == FunctionType.SYNC
+    assert schemas["_TestClass.async_method"].function_type == FunctionType.ASYNC
 
 
 class Color(enum.Enum):
