@@ -276,12 +276,26 @@ divide_schema = schemas['Calculator.divide']
 
 The schema generators support:
 
-- Regular instance methods
+- Regular functions
+- Regular instance methods (bound and unbound)
 - Class methods
 - Static methods
-- Async methods
+- Decorated functions / methods
+- Async functions / methods
 - Property methods
-- All supported type annotations
+- Basically all stdlib typing features as well as many stdlib types
 - Method docstrings for descriptions
 - Default values
 - Return type hints
+
+
+## Diferences to pydantic schema generation
+
+While Pydantics schema generation preserves detailed type information, `schema.model_dump_openai()`
+simplifies types to match OpenAI's function calling format. Most special types
+(datetime, UUID, Path, etc.) are handled similarly by both (we only strip unused information), but we handle enums
+differently: Instead of preserving enum class information, we extract just the values
+as a string enum. Union types and Optionals are also handled differently - we typically
+pick the first type to keep the schema simple and practical for AI interaction.
+This ensures compatibility with OpenAI's function calling API while maintaining enough
+type information for the AI to understand the function signature.
