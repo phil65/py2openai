@@ -371,11 +371,15 @@ def _determine_function_type(func: Callable[..., Any]) -> FunctionType:
     return FunctionType.SYNC
 
 
-def create_schema(func: Callable[..., Any]) -> FunctionSchema:
+def create_schema(
+    func: Callable[..., Any],
+    name_override: str | None = None,
+) -> FunctionSchema:
     """Create an OpenAI function schema from a Python function.
 
     Args:
         func: Function to create schema for
+        name_override: Optional name override (otherwise the function name)
 
     Returns:
         Schema representing the function
@@ -451,7 +455,7 @@ def create_schema(func: Callable[..., Any]) -> FunctionSchema:
         returns = _resolve_type_annotation(return_hint, is_parameter=False)
         returns_dct = dict(returns)  # type: ignore
     return FunctionSchema(
-        name=func.__name__,
+        name=name_override or func.__name__,
         description=docstring.short_description,
         parameters=parameters,
         required=required,
