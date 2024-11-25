@@ -9,6 +9,7 @@ from py2openai.functionschema import (
     create_schema,
 )
 from py2openai.schema_generators import (
+    create_schemas_from_callables,
     create_schemas_from_class,
     create_schemas_from_module,
 )
@@ -174,34 +175,77 @@ def test_create_schemas_from_module() -> None:
 
     # Test default prefix (module name)
     schemas = create_schemas_from_module(schema_module)
-    assert "py2openai.schema_generators.create_schema" in schemas
+    assert "py2openai.schema_generators.create_schemas_from_callables" in schemas
     assert "py2openai.schema_generators.create_schemas_from_class" in schemas
     assert "py2openai.schema_generators.create_schemas_from_module" in schemas
 
     # Test with no prefix
     no_prefix = create_schemas_from_module(schema_module, prefix=False)
-    assert "create_schema" in no_prefix
+    assert "create_schemas_from_callables" in no_prefix
     assert "create_schemas_from_class" in no_prefix
     assert "create_schemas_from_module" in no_prefix
 
     # Test with custom prefix
     custom = create_schemas_from_module(schema_module, prefix="API")
-    assert "API.create_schema" in custom
+    assert "API.create_schemas_from_callables" in custom
     assert "API.create_schemas_from_class" in custom
     assert "API.create_schemas_from_module" in custom
 
     # Test with include_functions
     included = create_schemas_from_module(
-        schema_module, include_functions=["create_schema"], prefix="API"
+        schema_module, include_functions=["create_schemas_from_callables"], prefix="API"
     )
     assert len(included) == 1
-    assert "API.create_schema" in included
+    assert "API.create_schemas_from_callables" in included
 
     # Verify schemas are identical regardless of prefix
-    base_schema = schemas["py2openai.schema_generators.create_schema"]
-    no_prefix_schema = no_prefix["create_schema"]
-    custom_schema = custom["API.create_schema"]
+    base_schema = schemas["py2openai.schema_generators.create_schemas_from_callables"]
+    no_prefix_schema = no_prefix["create_schemas_from_callables"]
+    custom_schema = custom["API.create_schemas_from_callables"]
 
     assert base_schema.parameters == no_prefix_schema.parameters
     assert base_schema.returns == custom_schema.returns
     assert base_schema.function_type == custom_schema.function_type
+
+
+def test_create_schemas_from_callables() -> None:
+    """Test creating schemas from a dictionary of callables."""
+
+    def func1(x: int) -> str:
+        return str(x)
+
+    def func2(y: float) -> bool:
+        return y > 0
+
+    callables = {
+        "str_conv": func1,
+        "is_positive": func2,
+    }
+
+    # Test with no prefix
+    schemas = create_schemas_from_callables(callables, prefix=False)
+    assert "str_conv" in schemas
+    assert "is_positive" in schemas
+
+    # Test with prefix
+    prefixed = create_schemas_from_callables(callables, prefix="Math")
+    assert "Math.str_conv" in prefixed
+    assert "Math.is_positive" in prefixed
+
+    # Verify schema contents
+    assert schemas["str_conv"].parameters["properties"]["x"]["type"] == "integer"
+    assert schemas["str_conv"].returns == {"type": "string"}
+    assert schemas["is_positive"].parameters["properties"]["y"]["type"] == "number"
+    assert schemas["is_positive"].returns == {"type": "boolean"}
+
+    # Verify private exclusion
+    private_callables = {
+        "public": func1,
+        "_private": func2,
+    }
+    filtered = create_schemas_from_callables(
+        private_callables, prefix=False, exclude_private=True
+    )
+    assert len(filtered) == 1
+    assert "public" in filtered
+    assert "_private" not in filtered
