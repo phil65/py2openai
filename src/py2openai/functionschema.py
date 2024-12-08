@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 from collections.abc import (
-    Callable,  # noqa: TC003
-    Sequence,  # noqa: F401
+    Callable,
+    Iterator,
+    Mapping,
+    Sequence,
 )
 import dataclasses
 from datetime import date, datetime, time, timedelta, timezone
@@ -14,9 +16,10 @@ import inspect
 import ipaddress
 from pathlib import Path
 import re
+import sys
 import types
 import typing
-from typing import Annotated, Any, TypeGuard
+from typing import Annotated, Any, TypeGuard, get_type_hints as _get_type_hints
 from uuid import UUID
 
 import docstring_parser
@@ -28,7 +31,34 @@ from py2openai.typedefs import (
     Property,
     ToolParameters,
 )
-from py2openai.utils import get_type_hints
+
+
+def get_type_hints(
+    fn: Callable[..., Any],
+    globalns: dict[str, Any] | None = None,
+    localns: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    module = sys.modules[fn.__module__]
+
+    result_ns = {
+        **module.__dict__,
+        "Sequence": Sequence,
+        "Iterator": Iterator,
+        "Mapping": Mapping,
+        "List": list,
+        "Dict": dict,
+        "Set": set,
+        "Tuple": tuple,
+        "Any": Any,
+    }
+    if globalns is not None:
+        result_ns = {**globalns, **result_ns}
+    return _get_type_hints(
+        fn,
+        include_extras=True,
+        localns=localns or locals(),
+        globalns=result_ns,
+    )
 
 
 class FunctionType(str, enum.Enum):

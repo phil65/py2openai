@@ -1,14 +1,13 @@
 __version__ = "0.9.9"
 
 from py2openai.executable import create_executable, ExecutableFunction
-from py2openai.functionschema import FunctionType, create_schema
+from py2openai.functionschema import FunctionType, create_schema, get_type_hints
 from py2openai.schema_generators import (
     create_schemas_from_callables,
     create_schemas_from_module,
     create_schemas_from_class,
 )
 from py2openai.typedefs import OpenAIFunctionDefinition, OpenAIFunctionTool
-from py2openai.utils import get_type_hints
 
 __all__ = [
     "ExecutableFunction",
