@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable  # noqa: TC003
+from collections.abc import (
+    Callable,  # noqa: TC003
+    Sequence,  # noqa: F401
+)
 import dataclasses
 from datetime import date, datetime, time, timedelta, timezone
 import decimal
@@ -400,7 +403,7 @@ def create_schema(
     docstring = docstring_parser.parse(func.__doc__ or "")
 
     # Get clean type hints without extras
-    hints = typing.get_type_hints(func)
+    hints = typing.get_type_hints(func, localns=locals())
 
     # Process parameters
     parameters: ToolParameters = {"type": "object", "properties": {}}
