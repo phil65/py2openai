@@ -404,7 +404,7 @@ def create_schema(
     docstring = docstring_parser.parse(func.__doc__ or "")
 
     # Get clean type hints without extras
-    hints = get_type_hints(func, localns=locals())
+    hints = get_type_hints(func, globalns=globals(), localns=locals())
 
     # Process parameters
     parameters: ToolParameters = {"type": "object", "properties": {}}
