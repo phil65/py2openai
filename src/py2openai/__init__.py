@@ -8,6 +8,7 @@ from py2openai.schema_generators import (
     create_schemas_from_class,
 )
 from py2openai.typedefs import OpenAIFunctionDefinition, OpenAIFunctionTool
+from py2openai.utils import get_type_hints
 
 __all__ = [
     "ExecutableFunction",
@@ -19,4 +20,5 @@ __all__ = [
     "create_schemas_from_callables",
     "create_schemas_from_class",
     "create_schemas_from_module",
+    "get_type_hints",
 ]
