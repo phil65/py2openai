@@ -28,6 +28,7 @@ from py2openai.typedefs import (
     Property,
     ToolParameters,
 )
+from py2openai.utils import get_type_hints
 
 
 class FunctionType(str, enum.Enum):
@@ -403,7 +404,7 @@ def create_schema(
     docstring = docstring_parser.parse(func.__doc__ or "")
 
     # Get clean type hints without extras
-    hints = typing.get_type_hints(func, localns=locals())
+    hints = get_type_hints(func, localns=locals())
 
     # Process parameters
     parameters: ToolParameters = {"type": "object", "properties": {}}
