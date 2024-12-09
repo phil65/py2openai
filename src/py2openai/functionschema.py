@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 from collections.abc import (
-    Callable,
-    Iterator,
-    Mapping,
-    Sequence,
+    Callable,  # noqa: TC003
+    Sequence,  # noqa: F401
 )
 import dataclasses
 from datetime import date, datetime, time, timedelta, timezone
@@ -14,12 +12,12 @@ import decimal
 import enum
 import inspect
 import ipaddress
+import logging
 from pathlib import Path
 import re
-import sys
 import types
 import typing
-from typing import Annotated, Any, TypeGuard, get_type_hints as _get_type_hints
+from typing import Annotated, Any, TypeGuard
 from uuid import UUID
 
 import docstring_parser
@@ -33,32 +31,7 @@ from py2openai.typedefs import (
 )
 
 
-def get_type_hints(
-    fn: Callable[..., Any],
-    globalns: dict[str, Any] | None = None,
-    localns: dict[str, Any] | None = None,
-) -> dict[str, Any]:
-    module = sys.modules[fn.__module__]
-
-    result_ns = {
-        **module.__dict__,
-        "Sequence": Sequence,
-        "Iterator": Iterator,
-        "Mapping": Mapping,
-        "List": list,
-        "Dict": dict,
-        "Set": set,
-        "Tuple": tuple,
-        "Any": Any,
-    }
-    if globalns is not None:
-        result_ns = {**globalns, **result_ns}
-    return _get_type_hints(
-        fn,
-        include_extras=True,
-        localns=localns or locals(),
-        globalns=result_ns,
-    )
+logger = logging.getLogger(__name__)
 
 
 class FunctionType(str, enum.Enum):
@@ -434,8 +407,14 @@ def create_schema(
     docstring = docstring_parser.parse(func.__doc__ or "")
 
     # Get clean type hints without extras
-    hints = get_type_hints(func, globalns=globals(), localns=locals())
-
+    try:
+        hints = typing.get_type_hints(func, localns=locals())
+    except NameError:
+        logger.warning(
+            "Unable to resolve type hints for function %s, skipping",
+            func.__name__,
+        )
+        hints = {}
     # Process parameters
     parameters: ToolParameters = {"type": "object", "properties": {}}
     required: list[str] = []
