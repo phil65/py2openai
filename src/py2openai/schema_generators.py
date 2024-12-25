@@ -4,9 +4,14 @@ from collections.abc import Callable  # noqa: TC003
 import importlib
 import inspect
 import types
-from typing import Any, Literal
+from typing import Any, Literal, get_type_hints
 
-from py2openai.functionschema import FunctionSchema, create_schema
+from py2openai.functionschema import (
+    FunctionSchema,
+    _resolve_type_annotation,
+    create_schema,
+)
+from py2openai.typedefs import ToolParameters
 
 
 def create_schemas_from_callables(
@@ -81,6 +86,40 @@ def create_schemas_from_class(
     # Use default prefix of class name if not specified
     effective_prefix = cls.__name__ if prefix is None else prefix
     return create_schemas_from_callables(callables, prefix=effective_prefix)
+
+
+def create_constructor_schema(cls: type) -> FunctionSchema:
+    """Create OpenAI function schema from class constructor.
+
+    Args:
+        cls: Class to create schema for
+
+    Returns:
+        OpenAI function schema for class constructor
+    """
+    sig = inspect.signature(cls.__init__)
+    hints = get_type_hints(cls.__init__)
+
+    properties: dict[str, Any] = {}
+    required: list[str] = []
+
+    for name, param in sig.parameters.items():
+        if name == "self":
+            continue
+
+        param_type = hints.get(name, Any)
+        properties[name] = _resolve_type_annotation(param_type)
+
+        if param.default == param.empty:
+            required.append(name)
+    name = f"create_{cls.__name__}"
+    description = inspect.getdoc(cls) or f"Create {cls.__name__} instance"
+    params = ToolParameters({
+        "type": "object",
+        "properties": properties,
+        "required": required,
+    })
+    return FunctionSchema(name=name, description=description, parameters=params)
 
 
 def create_schemas_from_module(
