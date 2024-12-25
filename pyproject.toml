@@ -32,12 +32,12 @@ classifiers = [
 ]
 keywords = []
 requires-python = ">=3.12"
+license = { file = "LICENSE" }
 dependencies = [
     "docstring-parser>=0.16",
     "pydantic",
     # Only add below (Copier)
 ]
-license = { file = "LICENSE" }
 
 [tool.uv]
 default-groups = ["dev", "lint", "docs"]
@@ -154,7 +154,7 @@ select = [
     # "TD",   # flake8-todos
     "T10", # flake8-debugger
     # "T20",  # flake8-print
-    "TCH", # flake8-type-checking
+    "TC", # flake8-type-checking
     "TID", # flake8-tidy-imports
     "TRY", # tryceratops
     "UP",  # PyUpgrade
@@ -212,10 +212,14 @@ combine-as-imports = true
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["E402", "I001"]
+"scripts/*" = ["INP001"]
 
 [tool.pyright]
+venvPath = "."
+venv = ".venv"
 pythonVersion = "3.12"
 pythonPlatform = "All"
+typeCheckingMode = "basic"
 deprecateTypingAliases = true
 reportMissingTypeStubs = false
 reportUnusedCallResult = false
@@ -224,6 +228,10 @@ reportAny = false
 reportImplicitOverride = false
 reportUnusedFunction = false
 reportImplicitStringConcatenation = false
+reportIgnoreCommentWithoutRule = false
+reportUnannotatedClassAttribute = false
+reportSelfClsParameterName = false
+reportPrivateImportUsage = false
 
 [tool.mknodes]
 allowed-commit-types = [
