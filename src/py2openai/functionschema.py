@@ -17,7 +17,7 @@ from pathlib import Path
 import re
 import types
 import typing
-from typing import Annotated, Any, TypeGuard
+from typing import Annotated, Any, NotRequired, Required, TypeGuard
 from uuid import UUID
 
 import docstring_parser
@@ -224,7 +224,37 @@ def _resolve_type_annotation(
     # Handle dataclasses
     elif dataclasses.is_dataclass(typ):
         schema["type"] = "object"
+    elif typing.is_typeddict(typ):
+        properties = {}
+        required = []
+        for field_name, field_type in typ.__annotations__.items():
+            # Check if field is wrapped in Required/NotRequired
+            origin = typing.get_origin(field_type)
+            if origin is Required:
+                is_required = True
+                field_type = typing.get_args(field_type)[0]
+            elif origin is NotRequired:
+                is_required = False
+                field_type = typing.get_args(field_type)[0]
+            else:
+                # Fall back to checking __required_keys__
+                is_required = field_name in getattr(
+                    typ, "__required_keys__", {field_name}
+                )
 
+            properties[field_name] = _resolve_type_annotation(
+                field_type,
+                is_parameter=is_parameter,
+            )
+            if is_required:
+                required.append(field_name)
+
+        schema.update({
+            "type": "object",
+            "properties": properties,
+        })
+        if required:
+            schema["required"] = required
     # Handle mappings - updated check
     elif (
         origin in (dict, typing.Dict)  # noqa: UP006
