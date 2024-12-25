@@ -410,10 +410,8 @@ def create_schema(
     try:
         hints = typing.get_type_hints(func, localns=locals())
     except NameError:
-        logger.warning(
-            "Unable to resolve type hints for function %s, skipping",
-            func.__name__,
-        )
+        msg = "Unable to resolve type hints for function %s, skipping"
+        logger.warning(msg, func.__name__)
         hints = {}
     # Process parameters
     parameters: ToolParameters = {"type": "object", "properties": {}}
