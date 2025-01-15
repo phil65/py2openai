@@ -43,6 +43,24 @@ class FunctionType(str, enum.Enum):
     ASYNC_GENERATOR = "async_generator"
 
 
+def get_param_type(param_details: Property) -> type[Any]:
+    """Get the Python type for a parameter based on its schema details."""
+    if "enum" in param_details:
+        # For enum parameters, we just use str since we can't reconstruct
+        # the exact enum class
+        return str
+
+    type_map = {
+        "string": str,
+        "integer": int,
+        "number": float,
+        "boolean": bool,
+        "array": list,
+        "object": dict,
+    }
+    return type_map.get(param_details.get("type", "string"), Any)  # type: ignore
+
+
 class FunctionSchema(pydantic.BaseModel):
     """Schema representing an OpenAI function definition and metadata.
 
@@ -169,22 +187,18 @@ class FunctionSchema(pydantic.BaseModel):
             print(str(sig))  # -> (location: str, unit: str = None, ...)
             ```
         """
-        type_map = {
-            "string": str,
-            "integer": int,
-            "number": float,
-            "boolean": bool,
-            "array": list,
-            "object": dict,
-        }
-
         parameters: list[inspect.Parameter] = []
         properties = self.parameters.get("properties", {})
         required = self.parameters.get("required", [])
 
         for name, details in properties.items():
-            param_type = type_map.get(details.get("type", "string"), Any)
+            param_type = get_param_type(details)
             default = ... if name in required else None
+
+            # If there's a default value in the schema, use it
+            if "default" in details:
+                default = details["default"]
+
             param = inspect.Parameter(
                 name=name,
                 kind=inspect.Parameter.KEYWORD_ONLY,
@@ -193,15 +207,9 @@ class FunctionSchema(pydantic.BaseModel):
             )
             parameters.append(param)
 
-        # Get return type from schema if available, default to str
-        return_type = type_map.get(
-            self.returns.get("type", "string"),
-            str,
-        )
-
         return inspect.Signature(
             parameters=parameters,
-            return_annotation=return_type,
+            return_annotation=Any,
         )
 
     @classmethod
