@@ -256,28 +256,29 @@ class FunctionSchema(pydantic.BaseModel):
         Returns:
             New FunctionSchema instance
 
-        Example:
-            ```python
-            schema_dict = {
-                "type": "function",
-                "function": {
-                    "name": "get_weather",
-                    "description": "Get weather info",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {
-                            "location": {"type": "string"}
-                        },
-                        "required": ["location"]
-                    }
-                }
-            }
-            schema = FunctionSchema.from_dict(schema_dict)
-            ```
+        Raises:
+            ValueError: If schema format is invalid or missing required fields
         """
-        # If we got a complete tool definition, extract the function part
-        if isinstance(schema, dict) and schema.get("type") == "function":
-            schema = schema["function"]
+        if isinstance(schema, dict):
+            if "type" in schema and schema["type"] == "function":
+                if "function" not in schema:
+                    msg = 'Tool with type "function" must have a "function" field'
+                    raise ValueError(msg)
+                schema = schema["function"]
+            elif "type" in schema and schema.get("type") != "function":
+                msg = f"Unknown tool type: {schema.get('type')}"
+                raise ValueError(msg)
+
+        # Validate we have a proper function definition
+        if not isinstance(schema, dict):
+            msg = "Schema must be a dictionary"
+            raise ValueError(msg)  # noqa: TRY004
+
+        # Get function name (try both locations)
+        name = schema.get("name", schema.get("function", {}).get("name"))
+        if not name:
+            msg = 'Schema must have a "name" field'
+            raise ValueError(msg)
 
         # Extract parameters
         param_dict = schema.get("parameters", {"type": "object", "properties": {}})
@@ -285,20 +286,20 @@ class FunctionSchema(pydantic.BaseModel):
             msg = "Schema parameters must be a dictionary"
             raise ValueError(msg)  # noqa: TRY004
 
-        # Get required parameters from both places
+        # Get required parameters
         required = param_dict.get("required", [])
 
-        # Create new instance with normalized parameters
+        # Create new instance with parameters without required list
         return cls(
-            name=schema["name"],
+            name=name,
             description=schema.get("description"),
             parameters={
                 "type": "object",
                 "properties": param_dict.get("properties", {}),
             },
             required=required,
-            returns={"type": "object"},  # default return type
-            function_type=FunctionType.SYNC,  # default to sync
+            returns={"type": "object"},
+            function_type=FunctionType.SYNC,
         )
 
 

@@ -65,17 +65,36 @@ def test_from_dict_function_only() -> None:
     schema = FunctionSchema.from_dict(func_schema)
 
     assert schema.name == "get_weather"
-    assert schema.parameters["properties"]["unit"]["enum"] == ["C", "F"]
+    assert schema.parameters["properties"]["unit"]["enum"] == ["C", "F"]  # pyright: ignore
     assert schema.required == ["location"]
 
 
 def test_from_dict_invalid_schema() -> None:
     """Test creating schema from invalid input."""
-    with pytest.raises(KeyError, match="function"):
-        FunctionSchema.from_dict({"type": "function"})  # missing function def
+    # Missing function field in tool definition
+    with pytest.raises(
+        ValueError, match='Tool with type "function" must have a "function" field'
+    ):
+        FunctionSchema.from_dict({"type": "function"})
 
-    with pytest.raises(KeyError, match="name"):
-        FunctionSchema.from_dict({"parameters": {}})  # missing name
+    # Missing name
+    with pytest.raises(ValueError, match='Schema must have a "name" field'):
+        FunctionSchema.from_dict({"parameters": {}})
+
+    # Invalid tool type
+    with pytest.raises(ValueError, match="Unknown tool type: chat"):
+        FunctionSchema.from_dict({"type": "chat", "function": {}})
+
+    # Non-dict input
+    with pytest.raises(ValueError, match="Schema must be a dictionary"):
+        FunctionSchema.from_dict("not a dict")  # type: ignore
+
+    # Parameters not a dict
+    with pytest.raises(ValueError, match="Schema parameters must be a dictionary"):
+        FunctionSchema.from_dict({
+            "name": "test",
+            "parameters": "not a dict",
+        })
 
 
 def test_roundtrip_conversion() -> None:
