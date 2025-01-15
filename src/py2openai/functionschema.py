@@ -153,6 +153,109 @@ class FunctionSchema(pydantic.BaseModel):
             function=function_def,
         )
 
+    def to_python_signature(self) -> inspect.Signature:
+        """Convert the schema back to a Python function signature.
+
+        This method creates a Python function signature from the OpenAI schema,
+        mapping JSON schema types back to their Python equivalents.
+
+        Returns:
+            A function signature representing the schema parameters
+
+        Example:
+            ```python
+            schema = FunctionSchema(...)
+            sig = schema.to_python_signature()
+            print(str(sig))  # -> (location: str, unit: str = None, ...)
+            ```
+        """
+        type_map = {
+            "string": str,
+            "integer": int,
+            "number": float,
+            "boolean": bool,
+            "array": list,
+            "object": dict,
+        }
+
+        parameters: list[inspect.Parameter] = []
+        properties = self.parameters.get("properties", {})
+        required = self.parameters.get("required", [])
+
+        for name, details in properties.items():
+            param_type = type_map.get(details.get("type", "string"), Any)
+            default = ... if name in required else None
+            param = inspect.Parameter(
+                name=name,
+                kind=inspect.Parameter.KEYWORD_ONLY,
+                annotation=param_type,
+                default=default,
+            )
+            parameters.append(param)
+
+        # Get return type from schema if available, default to str
+        return_type = type_map.get(
+            self.returns.get("type", "string"),
+            str,
+        )
+
+        return inspect.Signature(
+            parameters=parameters,
+            return_annotation=return_type,
+        )
+
+    @classmethod
+    def from_dict(cls, schema: dict[str, Any]) -> FunctionSchema:
+        """Create a FunctionSchema from a raw schema dictionary.
+
+        This method handles both OpenAI's tool format (with outer "type"/"function")
+        and direct function definition format.
+
+        Args:
+            schema: OpenAI function schema dictionary
+
+        Returns:
+            New FunctionSchema instance
+
+        Example:
+            ```python
+            schema_dict = {
+                "type": "function",
+                "function": {
+                    "name": "get_weather",
+                    "description": "Get weather info",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "location": {"type": "string"}
+                        },
+                        "required": ["location"]
+                    }
+                }
+            }
+            schema = FunctionSchema.from_dict(schema_dict)
+            ```
+        """
+        # If we got a complete tool definition, extract the function part
+        if isinstance(schema, dict) and schema.get("type") == "function":
+            schema = schema["function"]
+
+        # Extract parameters
+        param_dict = schema.get("parameters", {"type": "object", "properties": {}})
+        if not isinstance(param_dict, dict):
+            msg = "Schema parameters must be a dictionary"
+            raise ValueError(msg)  # noqa: TRY004
+
+        # Create new instance
+        return cls(
+            name=schema["name"],
+            description=schema.get("description"),
+            parameters=param_dict,  # type: ignore
+            required=param_dict.get("required", []),
+            returns={"type": "object"},  # default return type
+            function_type=FunctionType.SYNC,  # default to sync
+        )
+
 
 def _is_optional_type(typ: type) -> TypeGuard[type]:
     """Check if a type is Optional[T] or T | None.
