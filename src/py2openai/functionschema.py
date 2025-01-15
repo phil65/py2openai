@@ -17,7 +17,7 @@ from pathlib import Path
 import re
 import types
 import typing
-from typing import Annotated, Any, NotRequired, Required, TypeGuard
+from typing import Annotated, Any, Literal, NotRequired, Required, TypeGuard
 from uuid import UUID
 
 import docstring_parser
@@ -112,6 +112,42 @@ class FunctionSchema(pydantic.BaseModel):
 
     model_config = pydantic.ConfigDict(frozen=True)
 
+    def _create_pydantic_model(self) -> type[pydantic.BaseModel]:
+        """Create a Pydantic model from the schema parameters."""
+        fields: dict[str, tuple[type[Any], pydantic.Field]] = {}  # type: ignore
+        properties = self.parameters.get("properties", {})
+        required = self.parameters.get("required", self.required)
+
+        for name, details in properties.items():
+            # Get base type
+            if "enum" in details:
+                values = tuple(details["enum"])  # type: ignore
+                param_type = Literal[values]  # type: ignore
+            else:
+                type_map = {
+                    "string": str,
+                    "integer": int,
+                    "number": float,
+                    "boolean": bool,
+                    "array": list[Any],  # type: ignore
+                    "object": dict[str, Any],  # type: ignore
+                }
+                param_type = type_map.get(details.get("type", "string"), Any)
+
+            # Handle optional types (if there's a default of None)
+            default_value = details.get("default")
+            if default_value is None and name not in required:
+                param_type = param_type | None  # type: ignore
+
+            # Create a proper pydantic Field
+            field = (
+                param_type,
+                pydantic.Field(default=... if name in required else default_value),
+            )
+            fields[name] = field  # type: ignore
+
+        return pydantic.create_model(f"{self.name}_params", **fields)  # type: ignore
+
     def model_dump_openai(self) -> OpenAIFunctionTool:
         """Convert the schema to OpenAI's function calling format.
 
@@ -187,23 +223,18 @@ class FunctionSchema(pydantic.BaseModel):
             print(str(sig))  # -> (location: str, unit: str = None, ...)
             ```
         """
+        model = self._create_pydantic_model()
+
+        # Get parameter information from the Pydantic model
         parameters: list[inspect.Parameter] = []
-        properties = self.parameters.get("properties", {})
-        required = self.parameters.get("required", [])
-
-        for name, details in properties.items():
-            param_type = get_param_type(details)
-            default = ... if name in required else None
-
-            # If there's a default value in the schema, use it
-            if "default" in details:
-                default = details["default"]
-
+        for name, field in model.model_fields.items():
             param = inspect.Parameter(
                 name=name,
                 kind=inspect.Parameter.KEYWORD_ONLY,
-                annotation=param_type,
-                default=default,
+                annotation=field.annotation,
+                default=(
+                    inspect.Parameter.empty if field.is_required() else field.default
+                ),
             )
             parameters.append(param)
 
@@ -254,12 +285,18 @@ class FunctionSchema(pydantic.BaseModel):
             msg = "Schema parameters must be a dictionary"
             raise ValueError(msg)  # noqa: TRY004
 
-        # Create new instance
+        # Get required parameters from both places
+        required = param_dict.get("required", [])
+
+        # Create new instance with normalized parameters
         return cls(
             name=schema["name"],
             description=schema.get("description"),
-            parameters=param_dict,  # type: ignore
-            required=param_dict.get("required", []),
+            parameters={
+                "type": "object",
+                "properties": param_dict.get("properties", {}),
+            },
+            required=required,
             returns={"type": "object"},  # default return type
             function_type=FunctionType.SYNC,  # default to sync
         )

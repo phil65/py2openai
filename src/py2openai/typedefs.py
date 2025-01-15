@@ -13,6 +13,7 @@ class PropertyBase(TypedDict, total=False):
     description: str
     format: str
     default: Any
+    enum: NotRequired[list[Any]]
 
 
 class SimpleProperty(PropertyBase):
