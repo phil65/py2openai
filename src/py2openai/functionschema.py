@@ -243,6 +243,23 @@ class FunctionSchema(pydantic.BaseModel):
             return_annotation=Any,
         )
 
+    def get_annotations(self, return_type: Any = str) -> dict[str, type[Any]]:
+        """Get a dictionary of parameter names to their Python types.
+
+        This can be used directly for __annotations__ assignment.
+
+        Returns:
+            Dictionary mapping parameter names to their Python types.
+        """
+        model = self._create_pydantic_model()
+        annotations: dict[str, type[Any]] = {}
+
+        for name, field in model.model_fields.items():
+            annotations[name] = field.annotation  # type: ignore
+
+        annotations["return"] = return_type
+        return annotations
+
     @classmethod
     def from_dict(cls, schema: dict[str, Any]) -> FunctionSchema:
         """Create a FunctionSchema from a raw schema dictionary.
