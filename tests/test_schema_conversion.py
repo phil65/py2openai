@@ -196,5 +196,95 @@ def test_model_dump_openai_format() -> None:
     assert isinstance(params.get("required"), list)
 
 
+def test_complex_schema_conversion() -> None:
+    """Test conversion of schemas with complex types like anyOf/oneOf."""
+    # Example schema from your Git tools
+    git_create_branch_schema = {
+        "name": "git_create_branch",
+        "description": "Creates a new branch from an optional base branch",
+        "parameters": {
+            "properties": {
+                "repo_path": {"title": "Repo Path", "type": "string"},
+                "branch_name": {"title": "Branch Name", "type": "string"},
+                "base_branch": {
+                    "anyOf": [{"type": "string"}, {"type": "null"}],
+                    "default": None,
+                    "title": "Base Branch",
+                },
+            },
+            "required": ["repo_path", "branch_name"],
+            "title": "GitCreateBranch",
+            "type": "object",
+        },
+    }
+
+    # Convert to our schema
+    schema = FunctionSchema.from_dict(git_create_branch_schema)
+
+    # Verify basic properties
+    assert schema.name == "git_create_branch"
+    assert schema.description == "Creates a new branch from an optional base branch"
+
+    # Verify parameters were converted correctly
+    params = schema.parameters
+    assert params["type"] == "object"
+
+    # Check required fields
+    assert "required" in params
+    assert set(params["required"]) == {"repo_path", "branch_name"}
+
+    # Check properties
+    props = params["properties"]
+    assert "repo_path" in props
+    assert props["repo_path"]["type"] == "string"
+
+    assert "branch_name" in props
+    assert props["branch_name"]["type"] == "string"
+
+    # Check nullable field was converted properly
+    assert "base_branch" in props
+    base_branch = props["base_branch"]
+    assert base_branch["type"] == "string"
+    assert base_branch.get("default") is None
+
+    # Test roundtrip
+    openai_schema = schema.model_dump_openai()
+    roundtrip_schema = FunctionSchema.from_dict(openai_schema)  # type: ignore
+    assert schema.parameters == roundtrip_schema.parameters
+
+
+def test_array_schema_conversion() -> None:
+    """Test conversion of schemas with array types."""
+    # Example schema from your Git tools
+    git_add_schema = {
+        "name": "git_add",
+        "description": "Adds file contents to the staging area",
+        "parameters": {
+            "properties": {
+                "repo_path": {"title": "Repo Path", "type": "string"},
+                "files": {"items": {"type": "string"}, "title": "Files", "type": "array"},
+            },
+            "required": ["repo_path", "files"],
+            "title": "GitAdd",
+            "type": "object",
+        },
+    }
+
+    # Convert to our schema
+    schema = FunctionSchema.from_dict(git_add_schema)
+
+    # Verify array handling
+    params = schema.parameters
+    assert "files" in params["properties"]
+    files_prop = params["properties"]["files"]
+    assert files_prop["type"] == "array"
+    assert files_prop["items"]["type"] == "string"
+
+    # Test roundtrip
+    openai_schema = schema.model_dump_openai()
+    roundtrip_schema = FunctionSchema.from_dict(openai_schema)  # type: ignore
+    assert schema.parameters == roundtrip_schema.parameters
+
+
 if __name__ == "__main__":
     pytest.main([__file__])

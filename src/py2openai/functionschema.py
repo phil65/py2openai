@@ -264,11 +264,9 @@ class FunctionSchema(pydantic.BaseModel):
     def from_dict(cls, schema: dict[str, Any]) -> FunctionSchema:
         """Create a FunctionSchema from a raw schema dictionary.
 
-        This method handles both OpenAI's tool format + direct function definition format,
-        including advanced JSON Schema features like anyOf/oneOf.
-
         Args:
-            schema: OpenAI function schema dictionary
+            schema: OpenAI function schema dictionary.
+                Can be either a direct function definition or a tool wrapper.
 
         Returns:
             New FunctionSchema instance
@@ -276,11 +274,7 @@ class FunctionSchema(pydantic.BaseModel):
         Raises:
             ValueError: If schema format is invalid or missing required fields
         """
-        from py2openai.typedefs import (
-            _create_array_property,
-            _create_object_property,
-            _create_simple_property,
-        )
+        from py2openai.typedefs import _convert_complex_property
 
         # Handle tool wrapper format
         if isinstance(schema, dict):
@@ -315,61 +309,7 @@ class FunctionSchema(pydantic.BaseModel):
         cleaned_properties: dict[str, Property] = {}
 
         for prop_name, prop in properties.items():
-            # Handle anyOf/oneOf by converting to a simple type
-            if any(key in prop for key in ("anyOf", "oneOf")):
-                # Determine if null is allowed
-                types = []
-                for subschema in prop.get("anyOf", prop.get("oneOf", [])):
-                    if isinstance(subschema, dict):
-                        types.append(subschema.get("type"))  # noqa: PERF401
-
-                # If it can be null, treat as optional string
-                if "null" in types:
-                    cleaned_properties[prop_name] = _create_simple_property(
-                        type_str="string",
-                        description=prop.get("description"),
-                        default=None,
-                    )
-                else:
-                    # Use the first non-null type or default to string
-                    first_type = next(
-                        (t for t in types if t != "null"),
-                        "string",
-                    )
-                    if first_type not in ("string", "number", "integer", "boolean"):
-                        first_type = "string"
-                    cleaned_properties[prop_name] = _create_simple_property(
-                        type_str=first_type,  # type: ignore
-                        description=prop.get("description"),
-                        default=prop.get("default"),
-                    )
-
-            # Handle array types
-            elif prop.get("type") == "array":
-                cleaned_properties[prop_name] = _create_array_property(
-                    items=prop.get("items", {"type": "string"}),
-                    description=prop.get("description"),
-                )
-
-            # Handle object types
-            elif prop.get("type") == "object":
-                cleaned_properties[prop_name] = _create_object_property(
-                    description=prop.get("description"),
-                    properties=prop.get("properties"),
-                    required=prop.get("required"),
-                )
-            # Handle simple types
-            else:
-                type_str = prop.get("type", "string")
-                if type_str not in ("string", "number", "integer", "boolean"):
-                    type_str = "string"
-                cleaned_properties[prop_name] = _create_simple_property(
-                    type_str=type_str,  # type: ignore
-                    description=prop.get("description"),
-                    enum_values=prop.get("enum"),
-                    default=prop.get("default"),
-                    fmt=prop.get("format"),
-                )
+            cleaned_properties[prop_name] = _convert_complex_property(prop)
 
         # Get required fields
         required = param_dict.get("required", [])
@@ -379,6 +319,8 @@ class FunctionSchema(pydantic.BaseModel):
             "type": "object",
             "properties": cleaned_properties,
         }
+        if required:
+            parameters["required"] = required
 
         # Create new instance
         return cls(
@@ -697,9 +639,14 @@ def create_schema(
         msg = "Unable to resolve type hints for function %s, skipping"
         logger.warning(msg, func.__name__)
         hints = {}
+
     # Process parameters
-    parameters: ToolParameters = {"type": "object", "properties": {}}
+    parameters: ToolParameters = {
+        "type": "object",
+        "properties": {},
+    }
     required: list[str] = []
+
     params = list(sig.parameters.items())
     skip_first = (
         inspect.isfunction(func)
@@ -707,6 +654,7 @@ def create_schema(
         and params
         and params[0][0] == "self"
     )
+
     for i, (name, param) in enumerate(sig.parameters.items()):
         # Skip the first parameter for bound methods
         if skip_first and i == 0:
@@ -733,6 +681,10 @@ def create_schema(
         if param.default is inspect.Parameter.empty:
             required.append(name)
 
+    # Add required fields to parameters if any exist
+    if required:
+        parameters["required"] = required
+
     # Handle return type with is_parameter=False
     function_type = _determine_function_type(func)
     return_hint = hints.get("return", Any)
@@ -749,10 +701,11 @@ def create_schema(
     else:
         returns = _resolve_type_annotation(return_hint, is_parameter=False)
         returns_dct = dict(returns)  # type: ignore
+
     return FunctionSchema(
         name=name_override or func.__name__,
         description=docstring.short_description,
-        parameters=parameters,
+        parameters=parameters,  # Now includes required fields
         required=required,
         returns=returns_dct,
         function_type=function_type,
