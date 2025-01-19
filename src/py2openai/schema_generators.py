@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 from collections.abc import Callable  # noqa: TC003
+import dataclasses
 import importlib
 import inspect
 import types
 from typing import Any, Literal, get_type_hints
+
+import pydantic
 
 from py2openai.functionschema import (
     FunctionSchema,
@@ -97,29 +100,70 @@ def create_constructor_schema(cls: type) -> FunctionSchema:
     Returns:
         OpenAI function schema for class constructor
     """
-    sig = inspect.signature(cls.__init__)
-    hints = get_type_hints(cls.__init__)
+    if isinstance(cls, type) and issubclass(cls, pydantic.BaseModel):
+        properties = {}
+        required = []
+        for name, field in cls.model_fields.items():
+            param_type = field.annotation
+            properties[name] = _resolve_type_annotation(
+                param_type,
+                description=field.description,
+                default=field.default,
+            )
+            if field.is_required():
+                required.append(name)
 
-    properties: dict[str, Any] = {}
-    required: list[str] = []
+    # Handle dataclasses
+    elif dataclasses.is_dataclass(cls):
+        properties = {}
+        required = []
+        dc_fields = dataclasses.fields(cls)
+        hints = get_type_hints(cls)
 
-    for name, param in sig.parameters.items():
-        if name == "self":
-            continue
+        for dc_field in dc_fields:
+            param_type = hints[dc_field.name]
+            properties[dc_field.name] = _resolve_type_annotation(
+                param_type, default=dc_field.default
+            )
+            if (
+                dc_field.default is dataclasses.MISSING
+                and dc_field.default_factory is dataclasses.MISSING
+            ):
+                required.append(dc_field.name)
 
-        param_type = hints.get(name, Any)
-        properties[name] = _resolve_type_annotation(param_type)
+    # Handle regular classes
+    else:
+        sig = inspect.signature(cls.__init__)
+        hints = get_type_hints(cls.__init__)
+        properties = {}
+        required = []
 
-        if param.default == param.empty:
-            required.append(name)
+        for name, param in sig.parameters.items():
+            if name == "self":
+                continue
+
+            param_type = hints.get(name, Any)
+            properties[name] = _resolve_type_annotation(
+                param_type,
+                default=param.default,
+            )
+
+            if param.default is param.empty:
+                required.append(name)
+
     name = f"create_{cls.__name__}"
     description = inspect.getdoc(cls) or f"Create {cls.__name__} instance"
+
+    # Create parameters with required list included
     params = ToolParameters({
         "type": "object",
         "properties": properties,
         "required": required,
     })
-    return FunctionSchema(name=name, description=description, parameters=params)
+
+    return FunctionSchema(
+        name=name, description=description, parameters=params, required=required
+    )
 
 
 def create_schemas_from_module(
