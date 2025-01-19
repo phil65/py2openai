@@ -264,8 +264,8 @@ class FunctionSchema(pydantic.BaseModel):
     def from_dict(cls, schema: dict[str, Any]) -> FunctionSchema:
         """Create a FunctionSchema from a raw schema dictionary.
 
-        This method handles both OpenAI's tool format (with outer "type"/"function")
-        and direct function definition format.
+        This method handles both OpenAI's tool format + direct function definition format,
+        including advanced JSON Schema features like anyOf/oneOf.
 
         Args:
             schema: OpenAI function schema dictionary
@@ -276,6 +276,13 @@ class FunctionSchema(pydantic.BaseModel):
         Raises:
             ValueError: If schema format is invalid or missing required fields
         """
+        from py2openai.typedefs import (
+            _create_array_property,
+            _create_object_property,
+            _create_simple_property,
+        )
+
+        # Handle tool wrapper format
         if isinstance(schema, dict):
             if "type" in schema and schema["type"] == "function":
                 if "function" not in schema:
@@ -291,7 +298,7 @@ class FunctionSchema(pydantic.BaseModel):
             msg = "Schema must be a dictionary"
             raise ValueError(msg)  # noqa: TRY004
 
-        # Get function name (try both locations)
+        # Get function name
         name = schema.get("name", schema.get("function", {}).get("name"))
         if not name:
             msg = 'Schema must have a "name" field'
@@ -303,17 +310,81 @@ class FunctionSchema(pydantic.BaseModel):
             msg = "Schema parameters must be a dictionary"
             raise ValueError(msg)  # noqa: TRY004
 
-        # Get required parameters
+        # Clean up properties that have advanced JSON Schema features
+        properties = param_dict.get("properties", {})
+        cleaned_properties: dict[str, Property] = {}
+
+        for prop_name, prop in properties.items():
+            # Handle anyOf/oneOf by converting to a simple type
+            if any(key in prop for key in ("anyOf", "oneOf")):
+                # Determine if null is allowed
+                types = []
+                for subschema in prop.get("anyOf", prop.get("oneOf", [])):
+                    if isinstance(subschema, dict):
+                        types.append(subschema.get("type"))  # noqa: PERF401
+
+                # If it can be null, treat as optional string
+                if "null" in types:
+                    cleaned_properties[prop_name] = _create_simple_property(
+                        type_str="string",
+                        description=prop.get("description"),
+                        default=None,
+                    )
+                else:
+                    # Use the first non-null type or default to string
+                    first_type = next(
+                        (t for t in types if t != "null"),
+                        "string",
+                    )
+                    if first_type not in ("string", "number", "integer", "boolean"):
+                        first_type = "string"
+                    cleaned_properties[prop_name] = _create_simple_property(
+                        type_str=first_type,  # type: ignore
+                        description=prop.get("description"),
+                        default=prop.get("default"),
+                    )
+
+            # Handle array types
+            elif prop.get("type") == "array":
+                cleaned_properties[prop_name] = _create_array_property(
+                    items=prop.get("items", {"type": "string"}),
+                    description=prop.get("description"),
+                )
+
+            # Handle object types
+            elif prop.get("type") == "object":
+                cleaned_properties[prop_name] = _create_object_property(
+                    description=prop.get("description"),
+                    properties=prop.get("properties"),
+                    required=prop.get("required"),
+                )
+            # Handle simple types
+            else:
+                type_str = prop.get("type", "string")
+                if type_str not in ("string", "number", "integer", "boolean"):
+                    type_str = "string"
+                cleaned_properties[prop_name] = _create_simple_property(
+                    type_str=type_str,  # type: ignore
+                    description=prop.get("description"),
+                    enum_values=prop.get("enum"),
+                    default=prop.get("default"),
+                    fmt=prop.get("format"),
+                )
+
+        # Get required fields
         required = param_dict.get("required", [])
 
-        # Create new instance with parameters without required list
+        # Create parameters with cleaned properties
+        parameters: ToolParameters = {
+            "type": "object",
+            "properties": cleaned_properties,
+        }
+
+        # Create new instance
         return cls(
             name=name,
             description=schema.get("description"),
-            parameters={
-                "type": "object",
-                "properties": param_dict.get("properties", {}),
-            },
+            parameters=parameters,
             required=required,
             returns={"type": "object"},
             function_type=FunctionType.SYNC,
@@ -354,7 +425,24 @@ def _resolve_type_annotation(
         default: Default value if any
         is_parameter: Whether this is for a parameter (affects dict schema)
     """
+    from py2openai.typedefs import _create_simple_property
+
     schema: dict[str, Any] = {}
+
+    # Handle anyOf/oneOf fields
+    if isinstance(typ, dict) and ("anyOf" in typ or "oneOf" in typ):
+        # For simplicity, we'll treat it as a string that can be null
+        # This is a common pattern for optional fields
+        schema["type"] = "string"
+        if default is not None:
+            schema["default"] = default
+        if description:
+            schema["description"] = description
+        return _create_simple_property(
+            type_str="string",
+            description=description,
+            default=default,
+        )
 
     # Handle Annotated types first
     if typing.get_origin(typ) is Annotated:
