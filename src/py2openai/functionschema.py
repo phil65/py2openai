@@ -201,11 +201,7 @@ class FunctionSchema(pydantic.BaseModel):
             parameters=parameters,
         )
 
-        # Then wrap it in the tool
-        return OpenAIFunctionTool(
-            type="function",
-            function=function_def,
-        )
+        return OpenAIFunctionTool(type="function", function=function_def)
 
     def to_python_signature(self) -> inspect.Signature:
         """Convert the schema back to a Python function signature.
@@ -224,24 +220,17 @@ class FunctionSchema(pydantic.BaseModel):
             ```
         """
         model = self._create_pydantic_model()
-
-        # Get parameter information from the Pydantic model
         parameters: list[inspect.Parameter] = []
         for name, field in model.model_fields.items():
+            default = inspect.Parameter.empty if field.is_required() else field.default
             param = inspect.Parameter(
                 name=name,
                 kind=inspect.Parameter.KEYWORD_ONLY,
                 annotation=field.annotation,
-                default=(
-                    inspect.Parameter.empty if field.is_required() else field.default
-                ),
+                default=default,
             )
             parameters.append(param)
-
-        return inspect.Signature(
-            parameters=parameters,
-            return_annotation=Any,
-        )
+        return inspect.Signature(parameters=parameters, return_annotation=Any)
 
     def get_annotations(self, return_type: Any = str) -> dict[str, type[Any]]:
         """Get a dictionary of parameter names to their Python types.
@@ -253,10 +242,8 @@ class FunctionSchema(pydantic.BaseModel):
         """
         model = self._create_pydantic_model()
         annotations: dict[str, type[Any]] = {}
-
         for name, field in model.model_fields.items():
             annotations[name] = field.annotation  # type: ignore
-
         annotations["return"] = return_type
         return annotations
 
@@ -343,11 +330,8 @@ def _is_optional_type(typ: type) -> TypeGuard[type]:
         True if the type is Optional, False otherwise
     """
     origin = typing.get_origin(typ)
-
-    # Not a Union/UnionType, can't be Optional
     if origin not in (typing.Union, types.UnionType):  # pyright: ignore
         return False
-
     args = typing.get_args(typ)
     # Check if any of the union members is None or NoneType
     return any(arg is type(None) for arg in args)
@@ -405,15 +389,13 @@ def _resolve_type_annotation(
         # For Optional (union with None), filter out None type
         non_none_types = [t for t in args if t is not type(None)]
         if non_none_types:
-            # Use the first non-None type
-            schema.update(
-                _resolve_type_annotation(
-                    non_none_types[0],
-                    description=description,
-                    default=default,
-                    is_parameter=is_parameter,
-                )
+            prop = _resolve_type_annotation(
+                non_none_types[0],
+                description=description,
+                default=default,
+                is_parameter=is_parameter,
             )
+            schema.update(prop)
         else:
             schema["type"] = "string"  # Fallback for Union[]
 
@@ -445,10 +427,7 @@ def _resolve_type_annotation(
             if is_required:
                 required.append(field_name)
 
-        schema.update({
-            "type": "object",
-            "properties": properties,
-        })
+        schema.update({"type": "object", "properties": properties})
         if required:
             schema["required"] = required
     # Handle mappings - updated check
@@ -640,13 +619,8 @@ def create_schema(
         logger.warning(msg, func.__name__)
         hints = {}
 
-    # Process parameters
-    parameters: ToolParameters = {
-        "type": "object",
-        "properties": {},
-    }
+    parameters: ToolParameters = {"type": "object", "properties": {}}
     required: list[str] = []
-
     params = list(sig.parameters.items())
     skip_first = (
         inspect.isfunction(func)
