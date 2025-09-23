@@ -26,7 +26,7 @@ def unwrapped_decorator(func: Callable[..., Any]) -> Callable[..., Any]:
     return wrapper
 
 
-def wrapped_decorator(func: Callable[..., T]) -> Callable[..., T]:
+def wrapped_decorator[T](func: Callable[..., T]) -> Callable[..., T]:
     """A decorator that uses functools.wraps to preserve metadata."""
 
     @functools.wraps(func)
@@ -53,7 +53,7 @@ def parameterized_decorator(
     return decorator
 
 
-def stacked_decorator(func: Callable[..., T]) -> Callable[..., T]:
+def stacked_decorator[T](func: Callable[..., T]) -> Callable[..., T]:
     """Another wrapped decorator for stacking."""
 
     @functools.wraps(func)

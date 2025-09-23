@@ -53,7 +53,8 @@ def test_all_methods() -> None:
         TestMethods.static_method,
     ]:
         schema = create_schema(func)  # type: ignore[arg-type]
-        print(f"\n{func.__name__} schema params: {list(schema.parameters['properties'])}")
+        fn_name = getattr(func, "__name__", "unknown")
+        print(f"\n{fn_name} schema params: {list(schema.parameters['properties'])}")
         assert list(schema.parameters["properties"]) == ["x"]
 
 

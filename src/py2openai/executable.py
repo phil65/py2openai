@@ -157,19 +157,19 @@ class ExecutableFunction[T_co]:
 
 
 @overload
-def create_executable(
+def create_executable[T_co](
     func: Callable[..., T_co],
 ) -> ExecutableFunction[T_co]: ...
 
 
 @overload
-def create_executable(
+def create_executable[T_co](
     func: Callable[..., Generator[T_co, None, None]],
 ) -> ExecutableFunction[T_co]: ...
 
 
 @overload
-def create_executable(
+def create_executable[T_co](
     func: Callable[..., AsyncGenerator[T_co, None]],
 ) -> ExecutableFunction[T_co]: ...
 

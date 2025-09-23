@@ -474,7 +474,7 @@ def test_literal_types() -> None:
 
     def func(
         mode: Literal["read", "write"],
-        flag: Literal[True, False, None] = None,
+        flag: Literal[True, False] | None = None,
     ) -> None:
         """Test literal types.
 

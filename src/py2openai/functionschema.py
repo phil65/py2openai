@@ -616,7 +616,7 @@ def create_schema(
         hints = typing.get_type_hints(func, localns=locals())
     except NameError:
         msg = "Unable to resolve type hints for function %s, skipping"
-        logger.warning(msg, func.__name__)
+        logger.warning(msg, getattr(func, "__name__", "unknown"))
         hints = {}
 
     parameters: ToolParameters = {"type": "object", "properties": {}}
@@ -677,7 +677,7 @@ def create_schema(
         returns_dct = dict(returns)  # type: ignore
 
     return FunctionSchema(
-        name=name_override or func.__name__,
+        name=name_override or getattr(func, "__name__", "unknown") or "unknown",
         description=docstring.short_description,
         parameters=parameters,  # Now includes required fields
         required=required,
