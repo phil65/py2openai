@@ -4,11 +4,13 @@ import asyncio
 from collections.abc import AsyncIterator, Callable  # noqa: TC003
 from typing import TYPE_CHECKING, Any, TypeVar, overload
 
-from py2openai.functionschema import FunctionSchema, FunctionType, create_schema
+from py2openai.functionschema import FunctionType, create_schema
 
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Generator
+
+    from py2openai.functionschema import FunctionSchema
 
 T = TypeVar("T")
 T_co = TypeVar("T_co", covariant=True)

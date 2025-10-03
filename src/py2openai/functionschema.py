@@ -26,9 +26,12 @@ import pydantic
 from py2openai.typedefs import (
     OpenAIFunctionDefinition,
     OpenAIFunctionTool,
-    Property,
     ToolParameters,
 )
+
+
+if typing.TYPE_CHECKING:
+    from py2openai.typedefs import Property
 
 
 logger = logging.getLogger(__name__)
