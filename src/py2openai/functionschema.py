@@ -296,19 +296,15 @@ class FunctionSchema(pydantic.BaseModel):
 
         # Clean up properties that have advanced JSON Schema features
         properties = param_dict.get("properties", {})
-        cleaned_properties: dict[str, Property] = {}
-
+        cleaned_props: dict[str, Property] = {}
         for prop_name, prop in properties.items():
-            cleaned_properties[prop_name] = _convert_complex_property(prop)
+            cleaned_props[prop_name] = _convert_complex_property(prop)
 
         # Get required fields
         required = param_dict.get("required", [])
 
         # Create parameters with cleaned properties
-        parameters: ToolParameters = {
-            "type": "object",
-            "properties": cleaned_properties,
-        }
+        parameters: ToolParameters = {"type": "object", "properties": cleaned_props}
         if required:
             parameters["required"] = required
 
@@ -671,10 +667,8 @@ def create_schema(
             (t for t in typing.get_args(return_hint) if t is not type(None)),
             Any,
         )
-        returns_dct = {
-            "type": "array",
-            "items": _resolve_type_annotation(element_type, is_parameter=False),
-        }
+        prop = _resolve_type_annotation(element_type, is_parameter=False)
+        returns_dct = {"type": "array", "items": prop}
     else:
         returns = _resolve_type_annotation(return_hint, is_parameter=False)
         returns_dct = dict(returns)  # type: ignore

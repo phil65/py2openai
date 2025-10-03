@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import functools
-from typing import TYPE_CHECKING, Any, TypeVar
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
@@ -12,8 +12,6 @@ from py2openai.functionschema import create_schema
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-
-T = TypeVar("T")
 
 
 def unwrapped_decorator(func: Callable[..., Any]) -> Callable[..., Any]:
@@ -37,7 +35,7 @@ def wrapped_decorator[T](func: Callable[..., T]) -> Callable[..., T]:
     return wrapper
 
 
-def parameterized_decorator(
+def parameterized_decorator[T](
     *, tag: str
 ) -> Callable[[Callable[..., T]], Callable[..., T]]:
     """A parameterized decorator that uses functools.wraps."""
@@ -149,8 +147,8 @@ def test_wrapped_decorator() -> None:
     props = schema.parameters["properties"]
     assert props["x"]["type"] == "integer"
     assert props["y"]["type"] == "string"
-    assert props["x"]["description"] == "An integer"
-    assert props["y"]["description"] == "A string"
+    assert props["x"].get("description") == "An integer"
+    assert props["y"].get("description") == "A string"
     assert schema.returns == {"type": "object"}
 
 
@@ -166,8 +164,8 @@ def test_parameterized_decorator() -> None:
     props = schema.parameters["properties"]
     assert props["x"]["type"] == "integer"
     assert props["y"]["type"] == "string"
-    assert props["x"]["description"] == "An integer"
-    assert props["y"]["description"] == "A string"
+    assert props["x"].get("description") == "An integer"
+    assert props["y"].get("description") == "A string"
     assert schema.returns == {"type": "object"}
 
 
@@ -183,8 +181,8 @@ def test_multi_decorated_function() -> None:
     props = schema.parameters["properties"]
     assert props["x"]["type"] == "integer"
     assert props["y"]["type"] == "string"
-    assert props["x"]["description"] == "An integer"
-    assert props["y"]["description"] == "A string"
+    assert props["x"].get("description") == "An integer"
+    assert props["y"].get("description") == "A string"
     assert schema.returns == {"type": "object"}
 
 
@@ -194,7 +192,7 @@ def test_callable_class_decorator() -> None:
     class CallableDecorator:
         """A decorator implemented as a callable class."""
 
-        def __call__(self, func: Callable[..., T]) -> Callable[..., T]:
+        def __call__[T](self, func: Callable[..., T]) -> Callable[..., T]:
             """Make the class callable as a decorator."""
 
             @functools.wraps(func)
@@ -229,8 +227,8 @@ def test_callable_class_decorator() -> None:
     props = schema.parameters["properties"]
     assert props["x"]["type"] == "integer"
     assert props["y"]["type"] == "string"
-    assert props["x"]["description"] == "An integer"
-    assert props["y"]["description"] == "A string"
+    assert props["x"].get("description") == "An integer"
+    assert props["y"].get("description") == "A string"
     assert schema.returns == {"type": "object"}
 
 

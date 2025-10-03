@@ -12,7 +12,6 @@ if TYPE_CHECKING:
 
     from py2openai.functionschema import FunctionSchema
 
-T = TypeVar("T")
 T_co = TypeVar("T_co", covariant=True)
 
 
