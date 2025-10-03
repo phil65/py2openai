@@ -4,8 +4,6 @@ A Python library that automatically converts Python functions to OpenAI function
 
 [![PyPI License](https://img.shields.io/pypi/l/py2openai.svg)](https://pypi.org/project/py2openai/)
 [![Package status](https://img.shields.io/pypi/status/py2openai.svg)](https://pypi.org/project/py2openai/)
-[![Daily downloads](https://img.shields.io/pypi/dd/py2openai.svg)](https://pypi.org/project/py2openai/)
-[![Weekly downloads](https://img.shields.io/pypi/dw/py2openai.svg)](https://pypi.org/project/py2openai/)
 [![Monthly downloads](https://img.shields.io/pypi/dm/py2openai.svg)](https://pypi.org/project/py2openai/)
 [![Distribution format](https://img.shields.io/pypi/format/py2openai.svg)](https://pypi.org/project/py2openai/)
 [![Wheel availability](https://img.shields.io/pypi/wheel/py2openai.svg)](https://pypi.org/project/py2openai/)
@@ -23,11 +21,8 @@ A Python library that automatically converts Python functions to OpenAI function
 [![Github last commit](https://img.shields.io/github/last-commit/phil65/py2openai)](https://github.com/phil65/py2openai/commits)
 [![Github release date](https://img.shields.io/github/release-date/phil65/py2openai)](https://github.com/phil65/py2openai/releases)
 [![Github language count](https://img.shields.io/github/languages/count/phil65/py2openai)](https://github.com/phil65/py2openai)
-[![Github commits this week](https://img.shields.io/github/commit-activity/w/phil65/py2openai)](https://github.com/phil65/py2openai)
 [![Github commits this month](https://img.shields.io/github/commit-activity/m/phil65/py2openai)](https://github.com/phil65/py2openai)
-[![Github commits this year](https://img.shields.io/github/commit-activity/y/phil65/py2openai)](https://github.com/phil65/py2openai)
 [![Package status](https://codecov.io/gh/phil65/py2openai/branch/main/graph/badge.svg)](https://codecov.io/gh/phil65/py2openai/)
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![PyUp](https://pyup.io/repos/github/phil65/py2openai/shield.svg)](https://pyup.io/repos/github/phil65/py2openai/)
 
 [Read the documentation!](https://phil65.github.io/py2openai/)
