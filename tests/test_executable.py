@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from collections.abc import AsyncGenerator, Generator  # noqa: TC003
 
-import pytest
-
 from py2openai.executable import create_executable
 
 
@@ -31,7 +29,6 @@ def test_async_generator_sync_execution() -> None:
     assert exe.run(3) == ["0", "1", "2"]
 
 
-@pytest.mark.asyncio
 async def test_async_generator_execution() -> None:
     """Test async generator functions are properly schematized."""
 

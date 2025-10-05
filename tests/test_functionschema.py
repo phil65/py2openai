@@ -302,7 +302,6 @@ def test_sync_generator() -> None:
     }
 
 
-@pytest.mark.asyncio
 async def test_async_generator() -> None:
     """Test async generator functions are properly schematized."""
 
@@ -491,7 +490,6 @@ def test_literal_types() -> None:
     assert props["flag"].get("default") is None
 
 
-@pytest.mark.asyncio
 async def test_async_generators() -> None:
     """Test async generator function schemas."""
 
