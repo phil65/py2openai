@@ -71,9 +71,6 @@ class FunctionSchema(pydantic.BaseModel):
     OpenAI API, including its name, description, parameters, return type, and execution
     characteristics. It follows the OpenAI function calling format while adding
     additional metadata useful for Python function handling.
-
-    The schema includes support for complex parameter types, optional values,
-    and different function execution patterns (sync, async, generators).
     """
 
     name: str
@@ -234,6 +231,73 @@ class FunctionSchema(pydantic.BaseModel):
             )
             parameters.append(param)
         return inspect.Signature(parameters=parameters, return_annotation=Any)
+
+    def to_pydantic_model_code(self, class_name: str | None = None) -> str:
+        """Generate Pydantic model code using datamodel-codegen.
+
+        Args:
+            class_name: Name for the generated class (default: {name}Response)
+            model_type: Output model type for datamodel-codegen
+
+        Returns:
+            Generated Python code string
+
+        Raises:
+            RuntimeError: If datamodel-codegen is not available
+            subprocess.CalledProcessError: If code generation fails
+        """
+        import subprocess
+        import tempfile
+
+        try:
+            # Check if datamodel-codegen is available
+            subprocess.run(
+                ["datamodel-codegen", "--version"],
+                check=True,
+                capture_output=True,
+            )
+        except (subprocess.CalledProcessError, FileNotFoundError) as e:
+            msg = "datamodel-codegen not available"
+            raise RuntimeError(msg) from e
+
+        name = class_name or f"{self.name.title()}Response"
+
+        # Create temporary file with returns schema
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+            json.dump(self.returns, f)
+            schema_file = Path(f.name)
+
+        try:
+            # Generate model using datamodel-codegen
+            result = subprocess.run(
+                [
+                    "datamodel-codegen",
+                    "--input",
+                    str(schema_file),
+                    "--input-file-type",
+                    "jsonschema",
+                    "--output-model-type",
+                    "pydantic.BaseModel",
+                    "--class-name",
+                    name,
+                    "--disable-timestamp",
+                    "--use-union-operator",
+                    "--use-schema-description",
+                    "--enum-field-as-literal",
+                    "all",
+                    "--target-python-version",
+                    "3.12",
+                ],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+
+            return result.stdout.strip()
+
+        finally:
+            # Cleanup temp file
+            schema_file.unlink(missing_ok=True)
 
     def get_annotations(self, return_type: Any = str) -> dict[str, type[Any]]:
         """Get a dictionary of parameter names to their Python types.
