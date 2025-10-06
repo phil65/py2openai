@@ -1,4 +1,8 @@
-__version__ = "0.9.20"
+from __future__ import annotations
+
+from importlib.metadata import version
+
+__version__ = version("py2openai")
 
 from py2openai.executable import create_executable, ExecutableFunction
 from py2openai.functionschema import FunctionType, create_schema
@@ -15,6 +19,7 @@ __all__ = [
     "FunctionType",
     "OpenAIFunctionDefinition",
     "OpenAIFunctionTool",
+    "__version__",
     "create_constructor_schema",
     "create_executable",
     "create_schema",
