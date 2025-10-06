@@ -1,4 +1,7 @@
-"""Py2OpenAI: Create OpenAI-compatible function schemas from python functions"""
+"""Py2OpenAI: main package.
+
+Create OpenAI-compatible function schemas from python functions.
+"""
 
 from __future__ import annotations
 
@@ -6,7 +9,7 @@ from importlib.metadata import version
 
 __version__ = version("py2openai")
 __title__ = "Py2OpenAI"
-__description__ = "Create OpenAI-compatible function schemas from python functions"
+
 __author__ = "Philipp Temminghoff"
 __author_email__ = "philipptemminghoff@googlemail.com"
 __copyright__ = "Copyright (c) 2024 Philipp Temminghoff"
