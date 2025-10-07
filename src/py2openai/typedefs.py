@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 import inspect
-from typing import Any, Literal, NotRequired
-
-from typing_extensions import TypedDict
+from typing import Any, Literal, NotRequired, TypedDict
 
 
 class PropertyBase(TypedDict, total=False):
