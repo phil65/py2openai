@@ -8,7 +8,7 @@ from py2openai.executable import create_executable
 def test_sync_generator_execution() -> None:
     """Test sync generator functions are properly schematized."""
 
-    def gen(n: int) -> Generator[int, None, None]:
+    def gen(n: int) -> Generator[int]:
         yield from range(n)
 
     # Test execution
@@ -19,7 +19,7 @@ def test_sync_generator_execution() -> None:
 def test_async_generator_sync_execution() -> None:
     """Test synchronous execution of async generators."""
 
-    async def agen(n: int) -> AsyncGenerator[str, None]:
+    async def agen(n: int) -> AsyncGenerator[str]:
         """Generate n strings."""
         for i in range(n):
             yield str(i)
@@ -32,7 +32,7 @@ def test_async_generator_sync_execution() -> None:
 async def test_async_generator_execution() -> None:
     """Test async generator functions are properly schematized."""
 
-    async def agen(n: int) -> AsyncGenerator[str, None]:
+    async def agen(n: int) -> AsyncGenerator[str]:
         for i in range(n):
             yield str(i)
 

@@ -23,8 +23,8 @@ class ExecutableFunction[T_co]:
         schema: FunctionSchema,
         func: (
             Callable[..., T_co]
-            | Callable[..., Generator[T_co, None, None]]
-            | Callable[..., AsyncGenerator[T_co, None]]
+            | Callable[..., Generator[T_co]]
+            | Callable[..., AsyncGenerator[T_co]]
             | Callable[..., AsyncIterator[T_co]]
         ),
     ) -> None:
@@ -165,21 +165,21 @@ def create_executable[T_co](
 
 @overload
 def create_executable[T_co](
-    func: Callable[..., Generator[T_co, None, None]],
+    func: Callable[..., Generator[T_co]],
 ) -> ExecutableFunction[T_co]: ...
 
 
 @overload
 def create_executable[T_co](
-    func: Callable[..., AsyncGenerator[T_co, None]],
+    func: Callable[..., AsyncGenerator[T_co]],
 ) -> ExecutableFunction[T_co]: ...
 
 
 def create_executable(
     func: (
         Callable[..., T_co]
-        | Callable[..., Generator[T_co, None, None]]
-        | Callable[..., AsyncGenerator[T_co, None]]
+        | Callable[..., Generator[T_co]]
+        | Callable[..., AsyncGenerator[T_co]]
     ),
 ) -> ExecutableFunction[T_co]:
     """Create an executable function wrapper with schema.

@@ -286,7 +286,7 @@ def test_invalid_input() -> None:
 def test_sync_generator() -> None:
     """Test sync generator functions are properly schematized."""
 
-    def gen(n: int) -> Generator[int, None, None]:
+    def gen(n: int) -> Generator[int]:
         """Generate n numbers.
 
         Args:
@@ -305,7 +305,7 @@ def test_sync_generator() -> None:
 async def test_async_generator() -> None:
     """Test async generator functions are properly schematized."""
 
-    async def agen(n: int) -> AsyncGenerator[str, None]:
+    async def agen(n: int) -> AsyncGenerator[str]:
         """Generate n strings.
 
         Args:
@@ -496,7 +496,7 @@ async def test_async_generators() -> None:
     async def stream(
         text: str,
         chunk_size: int = 100,
-    ) -> AsyncGenerator[str, None]:
+    ) -> AsyncGenerator[str]:
         """Stream text in chunks.
 
         Args:
