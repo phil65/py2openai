@@ -1,6 +1,6 @@
 [project]
 name = "py2openai"
-version = "0.10.1"
+version = "1.0.0"
 description = "Create OpenAI-compatible function schemas from python functions"
 readme = "README.md"
 requires-python = ">=3.13"
