@@ -18,12 +18,7 @@ from pydantic import AnyUrl, EmailStr, Field, Json, StringConstraints, model_val
 __all__ = ["jsonschema_to_type", "merge_defaults"]
 
 
-FORMAT_TYPES = {
-    "date-time": datetime,
-    "email": EmailStr,
-    "uri": AnyUrl,
-    "json": Json,
-}
+FORMAT_TYPES = {"date-time": datetime, "email": EmailStr, "uri": AnyUrl, "json": Json}
 
 _classes: dict[str | tuple[str, ...], Any] = {}
 
