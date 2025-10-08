@@ -114,7 +114,7 @@ class FunctionSchema(pydantic.BaseModel):
 
     def _create_pydantic_model(self) -> type[pydantic.BaseModel]:
         """Create a Pydantic model from the schema parameters."""
-        fields: dict[str, tuple[type[Any], pydantic.Field]] = {}  # type: ignore
+        fields: dict[str, tuple[type[Any] | Literal, pydantic.Field]] = {}  # type: ignore
         properties = self.parameters.get("properties", {})
         required = self.parameters.get("required", self.required)
 
@@ -144,7 +144,7 @@ class FunctionSchema(pydantic.BaseModel):
                 param_type,
                 pydantic.Field(default=... if name in required else default_value),
             )
-            fields[name] = field  # type: ignore
+            fields[name] = field
 
         return pydantic.create_model(f"{self.name}_params", **fields)  # type: ignore
 
